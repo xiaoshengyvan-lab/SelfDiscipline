@@ -10,10 +10,8 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.selfdiscipline.app.data.AppSettings
 import com.selfdiscipline.app.databinding.ActivitySettingsBinding
-import com.selfdiscipline.app.reminder.ReminderActivity
 import com.selfdiscipline.app.service.UsageMonitorService
 import com.selfdiscipline.app.service.UsageStatsHelper
-import com.selfdiscipline.app.task.TaskListActivity
 import com.selfdiscipline.app.util.DeviceCompat
 
 /**
@@ -41,7 +39,7 @@ class SettingsActivity : AppCompatActivity() {
         binding.etInterval.setText(settings.remindIntervalMinutes.toString())
 
         setupSwitch()
-        setupEntries()
+        setupRemindCollapse()
         updatePermissionBanner()
         updateBatteryUi()
         setupDeviceCompat()
@@ -82,20 +80,20 @@ class SettingsActivity : AppCompatActivity() {
         Toast.makeText(this, "自律监控已关闭", Toast.LENGTH_SHORT).show()
     }
 
+    // ---------- 提醒设置折叠 ----------
+
+    private fun setupRemindCollapse() {
+        var expanded = false
+        binding.remindHeader.setOnClickListener {
+            expanded = !expanded
+            binding.layoutRemindFields.visibility = if (expanded) View.VISIBLE else View.GONE
+            binding.ivRemindArrow.animate().rotation(if (expanded) 180f else 0f).setDuration(200).start()
+        }
+    }
+
     // ---------- 入口 ----------
 
     private fun setupEntries() {
-        binding.cardTaskList.setOnClickListener {
-            startActivity(Intent(this, TaskListActivity::class.java))
-        }
-        binding.cardTestReminder.setOnClickListener {
-            val testUsage = settings.dailyThresholdMinutes * 60_000L
-            startActivity(
-                Intent(this, ReminderActivity::class.java)
-                    .putExtra(ReminderActivity.EXTRA_USAGE, testUsage)
-                    .putExtra(ReminderActivity.EXTRA_TASK_ID, -1L)
-            )
-        }
         binding.btnGrantPermission.setOnClickListener {
             UsageStatsHelper.openUsageAccessSettings(this)
         }

@@ -42,4 +42,8 @@ interface TaskDao {
     /** 重置为未完成 */
     @Query("UPDATE tasks SET done = 0, doneAt = NULL WHERE id = :id")
     suspend fun resetTask(id: Long)
+
+    /** 每日 0 点刷新：全部已完成任务重置为未完成 */
+    @Query("UPDATE tasks SET done = 0, doneAt = NULL WHERE done = 1")
+    suspend fun resetAllDone()
 }

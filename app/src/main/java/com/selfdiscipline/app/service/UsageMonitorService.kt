@@ -167,6 +167,8 @@ class UsageMonitorService : Service() {
         val usage = SessionUsage.currentMs(this)
         updateForegroundNotification(usage)
         broadcastUsage(usage)
+        // 每日刷新已完成任务 + 每日按优先级提醒一次
+        DailyScheduler.checkDaily(this, TaskRepository.get(this))
         maybeRemind(usage)
         checkFocusCompletion()
     }

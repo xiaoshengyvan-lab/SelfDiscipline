@@ -22,6 +22,7 @@ import com.selfdiscipline.app.data.Task
 import com.selfdiscipline.app.data.TaskRepository
 import com.selfdiscipline.app.databinding.ActivityMainBinding
 import com.selfdiscipline.app.reminder.ReminderActivity
+import com.selfdiscipline.app.service.DailyScheduler
 import com.selfdiscipline.app.service.SessionUsage
 import com.selfdiscipline.app.service.UsageMonitorService
 import com.selfdiscipline.app.service.UsageStatsHelper
@@ -92,6 +93,10 @@ class MainActivity : AppCompatActivity() {
         if (settings.monitoringEnabled) {
             UsageMonitorService.start(this)
         }
+        // 每日 0 点刷新任务 + 每日任务提醒（打开 App 时立即生效）
+        lifecycleScope.launch {
+            DailyScheduler.checkDaily(this@MainActivity, repository)
+        }
         showUsage(SessionUsage.currentMs(this))
     }
 
@@ -130,7 +135,7 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    /** 底部圆形加号：弹窗快速添加待办（默认 30 分钟） */
+    /** 底部圆形加号：弹窗快速添加待办（默认 30 分钟），并可查看任务清单 */
     private fun showQuickAddDialog() {
         val input = EditText(this).apply {
             hint = "要做什么…"
@@ -141,7 +146,7 @@ class MainActivity : AppCompatActivity() {
         input.setPadding(pad, pad, pad, pad)
 
         AlertDialog.Builder(this)
-            .setTitle("快速添加待办")
+            .setTitle("快速待办")
             .setView(input)
             .setPositiveButton("添加") { _, _ ->
                 val title = input.text?.toString()?.trim().orEmpty()
@@ -153,6 +158,9 @@ class MainActivity : AppCompatActivity() {
                     repository.add(title, 30, 0)
                     Toast.makeText(this@MainActivity, "已加入待办", Toast.LENGTH_SHORT).show()
                 }
+            }
+            .setNeutralButton("查看任务清单") { _, _ ->
+                startActivity(Intent(this, TaskListActivity::class.java))
             }
             .setNegativeButton("取消", null)
             .show()

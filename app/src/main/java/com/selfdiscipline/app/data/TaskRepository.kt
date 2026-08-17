@@ -27,6 +27,8 @@ class TaskRepository(private val dao: TaskDao) {
 
     suspend fun reset(id: Long) = dao.resetTask(id)
 
+    suspend fun resetAllDone() = dao.resetAllDone()
+
     companion object {
         @Volatile
         private var instance: TaskRepository? = null

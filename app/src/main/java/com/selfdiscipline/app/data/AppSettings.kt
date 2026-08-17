@@ -42,6 +42,16 @@ class AppSettings(context: Context) {
         get() = prefs.getLong(KEY_LAST_REMIND, 0L)
         set(value) = prefs.edit().putLong(KEY_LAST_REMIND, value).apply()
 
+    /** 上次任务刷新日期（yyyy-MM-dd；每日 0 点重置已完成任务） */
+    var lastResetDate: String
+        get() = prefs.getString(KEY_LAST_RESET_DATE, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_LAST_RESET_DATE, value).apply()
+
+    /** 上次「今日任务提醒」日期（yyyy-MM-dd；每天按优先级提醒一次） */
+    var lastTaskRemindDate: String
+        get() = prefs.getString(KEY_LAST_TASK_REMIND_DATE, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_LAST_TASK_REMIND_DATE, value).apply()
+
     // ---------- 本次会话提醒节流 ----------
 
     /** 再次提醒时间点（墙钟毫秒，0 表示未设置；新会话自动清除） */
@@ -129,6 +139,8 @@ class AppSettings(context: Context) {
         const val KEY_INTERVAL = "remind_interval_minutes"
         const val KEY_EXCLUDE_SELF = "exclude_self"
         const val KEY_LAST_REMIND = "last_remind_at"
+        const val KEY_LAST_RESET_DATE = "last_reset_date"
+        const val KEY_LAST_TASK_REMIND_DATE = "last_task_remind_date"
         const val KEY_SNOOZE_UNTIL = "snooze_until_ms"
         const val KEY_SESSION_MUTED = "session_muted"
         const val KEY_SESSION_FROZEN = "session_frozen"
