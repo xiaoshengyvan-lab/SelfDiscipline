@@ -12,6 +12,7 @@ import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.os.SystemClock
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
@@ -167,6 +168,17 @@ class UsageMonitorService : Service() {
         updateForegroundNotification(usage)
         broadcastUsage(usage)
         maybeRemind(usage)
+        checkFocusCompletion()
+    }
+
+    /** 专注倒计时结束：清除状态并弹出完成提醒 */
+    private fun checkFocusCompletion() {
+        val deadline = settings.focusDeadlineElapsed
+        if (deadline > 0L && SystemClock.elapsedRealtime() >= deadline) {
+            val title = settings.focusTaskTitle.ifEmpty { "专注" }
+            settings.clearFocus()
+            ReminderNotifier.showFocusFinished(this, title)
+        }
     }
 
     /**

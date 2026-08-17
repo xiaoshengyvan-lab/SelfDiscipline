@@ -7,6 +7,7 @@
     <color name="on_primary_container">#1B5E20</color>
     <color name="ic_launcher_background">#2E7D32</color>
     <color name="surface">#FFFFFF</color>
+    <color name="bg">#F2F3F5</color>
     <color name="surface_variant">#F4F4F5</color>
     <color name="text_secondary">#8A8A8E</color>
 </resources>

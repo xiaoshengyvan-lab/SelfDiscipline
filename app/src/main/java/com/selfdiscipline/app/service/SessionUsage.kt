@@ -7,25 +7,23 @@ import android.os.SystemClock
 import com.selfdiscipline.app.data.AppSettings
 
 /**
- * 会话使用时长（自手机解锁/亮屏后累计的屏幕使用时间）。
+ * 会话使用时长（自手机解锁后累计的屏幕使用时间）。
  *
- * 事件驱动（由 UsageMonitorService 中的屏幕广播触发）：
- *  - 亮屏：距上次息屏超过 2 分钟视为新会话，从头计时；短暂亮屏（通知等）延续原会话
- *  - 息屏：把当前段时长累计入账并暂停计时
- *  - 解锁（USER_PRESENT）：仅在未计时时开启新会话，避免部分机型反复广播导致清零
- *  - resumeIfNeeded：服务启动时同步当前屏幕状态，确保亮屏且未锁屏时立即开始计时
+ * 计时偏差修复（本版）：
+ *  - 锁屏界面 / 息屏显示（AOD）/ 通知点亮不再计入：锁屏点亮时置「等待解锁」，解锁后才开始计时
+ *  - 快速锁屏再解锁会正确刷新：解锁（USER_PRESENT）一律开启新会话，而不是沿用 2 分钟间隔规则
+ *  - 无锁屏设备仍用「距上次息屏 ≥ 2 分钟」判定新会话，通知短暂亮屏不会打断
  *
- * 提醒后的会话规则（需求）：
- *  - 达到阈值提醒后「冻结」计时：本次会话不再累计使用时长
- *  - 锁屏再解锁（新会话）后自动恢复计时并重新刷新为 0
- *  - 新会话同时恢复提醒（清除“关闭本次提醒”与“稍后提醒”状态）
+ * 提醒后的会话规则：
+ *  - 达到阈值提醒后「冻结」计时：本次会话不再累计
+ *  - 锁屏再解锁（新会话）后自动恢复计时并刷新为 0，同时恢复提醒
  *
  * 使用 elapsedRealtime 计时，不查询 UsageStatsManager，不持有唤醒锁，几乎零耗电。
  * 状态持久化到 SharedPreferences，服务被杀后仍可恢复。
  */
 object SessionUsage {
 
-    /** 亮屏距上次息屏超过该值（毫秒）视为新会话 */
+    /** 无锁屏设备：亮屏距上次息屏超过该值（毫秒）视为新会话 */
     private const val RESET_GAP_MS = 120_000L
 
     /** 当前会话累计使用时长（毫秒）；冻结后返回固定值，不再累加 */
@@ -46,12 +44,18 @@ object SessionUsage {
         val s = AppSettings(context)
         if (s.sessionScreenOn) return
         val now = SystemClock.elapsedRealtime()
+        val km = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+        if (km.isKeyguardLocked) {
+            // 锁屏点亮（含息屏显示/通知唤醒）：等待解锁，不计时
+            s.sessionPendingUnlock = true
+            return
+        }
         val gap = now - s.lastScreenOffElapsed
         if (s.lastScreenOffElapsed == 0L || gap >= RESET_GAP_MS) {
             // 新会话：从头计时并恢复提醒
             startNewSession(s, now)
         } else {
-            // 短暂亮屏则延续已累计的时长，从当前时刻继续计
+            // 短暂亮屏（通知等）延续原会话
             s.sessionStartElapsed = now
         }
         s.sessionScreenOn = true
@@ -60,25 +64,27 @@ object SessionUsage {
     /** 息屏事件 */
     fun onScreenOff(context: Context) {
         val s = AppSettings(context)
-        if (!s.sessionScreenOn) return
-        val now = SystemClock.elapsedRealtime()
-        if (!s.sessionFrozen) {
-            // 冻结后不再累计
-            s.sessionAccumulatedMs += (now - s.sessionStartElapsed).coerceAtLeast(0L)
+        if (s.sessionScreenOn) {
+            val now = SystemClock.elapsedRealtime()
+            if (!s.sessionFrozen) {
+                s.sessionAccumulatedMs += (now - s.sessionStartElapsed).coerceAtLeast(0L)
+            }
+            s.sessionStartElapsed = now
+            s.sessionScreenOn = false
+            s.lastScreenOffElapsed = now
         }
-        s.sessionStartElapsed = now
-        s.sessionScreenOn = false
-        s.lastScreenOffElapsed = now
+        s.sessionPendingUnlock = false
     }
 
     /**
      * 解锁事件（从锁屏打开）：
-     * 仅在尚未计时时开启新会话；若屏幕已亮且正在计时则忽略，
-     * 避免部分机型/ROM 在每次亮屏时都广播 USER_PRESENT 导致计时被反复清零。
+     *  - 等待解锁中 → 开启新会话（刷新时长）
+     *  - 未在计时 → 开启新会话
+     *  - 已在计时（无锁屏设备反复广播）→ 忽略，避免清零
      */
     fun onUserPresent(context: Context) {
         val s = AppSettings(context)
-        if (s.sessionScreenOn) return
+        if (s.sessionScreenOn && !s.sessionPendingUnlock) return
         startNewSession(s, SystemClock.elapsedRealtime())
     }
 
@@ -113,6 +119,7 @@ object SessionUsage {
         s.sessionAccumulatedMs = 0L
         s.sessionStartElapsed = now
         s.sessionScreenOn = true
+        s.sessionPendingUnlock = false
         s.sessionFrozen = false
         s.sessionMuted = false
         s.snoozeUntilMs = 0L

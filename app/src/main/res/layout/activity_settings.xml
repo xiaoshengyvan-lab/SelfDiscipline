@@ -3,15 +3,14 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white"
+    android:background="@color/bg"
     android:orientation="vertical">
 
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="@color/white"
-        app:navigationIcon="?attr/homeAsUpIndicator"
+        android:background="@color/bg"
         app:title="设置"
         app:titleTextAppearance="?attr/textAppearanceTitleLarge" />
 
@@ -47,7 +46,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="⏰ 自律提醒"
+                        android:text="自律提醒"
                         android:textAppearance="?attr/textAppearanceTitleMedium"
                         android:textStyle="bold" />
 
@@ -78,7 +77,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="⚙️ 提醒设置"
+                        android:text="提醒设置"
                         android:textAppearance="?attr/textAppearanceLabelLarge"
                         android:textColor="@color/text_secondary" />
 
@@ -148,7 +147,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="📋 我的任务清单"
+                        android:text="我的任务清单"
                         android:textAppearance="?attr/textAppearanceTitleMedium" />
 
                     <TextView
@@ -186,7 +185,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="🧪 模拟触发提醒"
+                        android:text="模拟触发提醒"
                         android:textAppearance="?attr/textAppearanceTitleMedium" />
 
                     <TextView
@@ -261,7 +260,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="🔋 电池优化"
+                            android:text="电池优化"
                             android:textAppearance="?attr/textAppearanceTitleMedium" />
 
                         <TextView
@@ -306,7 +305,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="📱 系统适配"
+                        android:text="系统适配"
                         android:textAppearance="?attr/textAppearanceTitleMedium" />
 
                     <TextView

@@ -22,6 +22,7 @@ object ReminderNotifier {
 
     const val CHANNEL_REMINDER = "reminder_channel"
     const val NOTIFICATION_ID = 2001
+    const val NOTIFICATION_ID_FOCUS = 2002
 
     fun showReminder(context: Context, usageMillis: Long, task: Task?) {
         ensureChannel(context)
@@ -71,6 +72,40 @@ object ReminderNotifier {
             NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
         } catch (e: SecurityException) {
             // 通知权限被用户拒绝时静默失败，避免崩溃
+        }
+    }
+
+    /** 专注倒计时结束提醒 */
+    fun showFocusFinished(context: Context, taskTitle: String) {
+        ensureChannel(context)
+
+        val intent = Intent(context, ReminderActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(ReminderActivity.EXTRA_USAGE, SessionUsage.currentMs(context))
+            putExtra(ReminderActivity.EXTRA_TASK_ID, -1L)
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            4,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(context, CHANNEL_REMINDER)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle("专注完成 🎉")
+            .setContentText("「$taskTitle」的时间到了，休息一下吧")
+            .setContentIntent(pendingIntent)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .build()
+
+        try {
+            NotificationManagerCompat.from(context).notify(NOTIFICATION_ID_FOCUS, notification)
+        } catch (e: SecurityException) {
+            // 通知权限被拒绝时静默失败
         }
     }
 

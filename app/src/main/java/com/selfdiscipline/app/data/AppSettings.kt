@@ -66,10 +66,15 @@ class AppSettings(context: Context) {
         get() = prefs.getLong(KEY_FOCUS_TASK_ID, -1L)
         set(value) = prefs.edit().putLong(KEY_FOCUS_TASK_ID, value).apply()
 
-    /** 专注截止时刻（elapsedRealtime，毫秒；0 表示无） */
+    /** 专注截止时刻（elapsedRealtime，毫秒；>0 表示计时中，0 表示暂停/无） */
     var focusDeadlineElapsed: Long
         get() = prefs.getLong(KEY_FOCUS_DEADLINE, 0L)
         set(value) = prefs.edit().putLong(KEY_FOCUS_DEADLINE, value).apply()
+
+    /** 暂停时剩余毫秒（计时中此值不更新） */
+    var focusRemainingMs: Long
+        get() = prefs.getLong(KEY_FOCUS_REMAIN, 0L)
+        set(value) = prefs.edit().putLong(KEY_FOCUS_REMAIN, value).apply()
 
     /** 专注任务名称（任务被删除时兜底显示） */
     var focusTaskTitle: String
@@ -81,11 +86,12 @@ class AppSettings(context: Context) {
         get() = prefs.getInt(KEY_FOCUS_DURATION, 30)
         set(value) = prefs.edit().putInt(KEY_FOCUS_DURATION, value).apply()
 
-    /** 清除专注状态（完成或计时结束时调用） */
+    /** 清除专注状态（完成/计时结束/切换任务时调用） */
     fun clearFocus() {
         prefs.edit()
             .putLong(KEY_FOCUS_TASK_ID, -1L)
             .putLong(KEY_FOCUS_DEADLINE, 0L)
+            .putLong(KEY_FOCUS_REMAIN, 0L)
             .putString(KEY_FOCUS_TITLE, "")
             .apply()
     }
@@ -107,6 +113,11 @@ class AppSettings(context: Context) {
         get() = prefs.getBoolean(KEY_SESSION_ON, false)
         set(value) = prefs.edit().putBoolean(KEY_SESSION_ON, value).apply()
 
+    /** 是否在等待解锁（锁屏点亮时置位，解锁后开启新会话） */
+    var sessionPendingUnlock: Boolean
+        get() = prefs.getBoolean(KEY_SESSION_PENDING, false)
+        set(value) = prefs.edit().putBoolean(KEY_SESSION_PENDING, value).apply()
+
     /** 上次息屏时刻（elapsedRealtime，毫秒），用于判断短亮屏 */
     var lastScreenOffElapsed: Long
         get() = prefs.getLong(KEY_LAST_SCREEN_OFF, 0L)
@@ -123,11 +134,13 @@ class AppSettings(context: Context) {
         const val KEY_SESSION_FROZEN = "session_frozen"
         const val KEY_FOCUS_TASK_ID = "focus_task_id"
         const val KEY_FOCUS_DEADLINE = "focus_deadline_elapsed"
+        const val KEY_FOCUS_REMAIN = "focus_remaining_ms"
         const val KEY_FOCUS_TITLE = "focus_task_title"
         const val KEY_FOCUS_DURATION = "focus_task_duration"
         const val KEY_SESSION_ACC = "session_accumulated_ms"
         const val KEY_SESSION_START = "session_start_elapsed"
         const val KEY_SESSION_ON = "session_screen_on"
+        const val KEY_SESSION_PENDING = "session_pending_unlock"
         const val KEY_LAST_SCREEN_OFF = "last_screen_off_elapsed"
     }
 }

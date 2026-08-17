@@ -1,6 +1,7 @@
 package com.selfdiscipline.app
 
 import android.Manifest
+import android.app.AlertDialog
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -8,7 +9,9 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.text.InputType
 import android.view.View
+import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -31,16 +34,16 @@ import kotlinx.coroutines.launch
 /**
  * 主页：
  *  - 本次解锁使用时长 + 阈值进度
- *  - 下一步要做的任务 + 预计时长（可一键开始专注）
- *  - 快速添加待办（待办提醒）
+ *  - 下一步任务卡片（点击进入专注页）
+ *  - 底部居中圆形加号：弹窗快速添加待办
  *  - 未授权时才显示权限引导（授权后自动隐藏）
- *  - 右上角进入设置页（自律开关、提醒设置、任务清单、模拟提醒等）
  */
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val settings by lazy { AppSettings(this) }
     private val repository by lazy { TaskRepository.get(this) }
+    private var nextTask: Task? = null
 
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -63,9 +66,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         requestNotificationPermissionIfNeeded()
-        setupToolbar()
-        setupQuickAdd()
-        setupPermissionBanner()
+        setupActions()
         observeTasks()
     }
 
@@ -105,34 +106,55 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupToolbar() {
+    private fun setupActions() {
         binding.btnSettings.setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
-    }
-
-    private fun setupQuickAdd() {
-        binding.btnAddTodo.setOnClickListener {
-            val title = binding.etQuickTodo.text?.toString()?.trim().orEmpty()
-            if (title.isEmpty()) {
-                Toast.makeText(this, "先输入要做的事", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            lifecycleScope.launch {
-                repository.add(title, 30, 0)
-                binding.etQuickTodo.text?.clear()
-                Toast.makeText(this@MainActivity, "已加入待办", Toast.LENGTH_SHORT).show()
-            }
-        }
+        binding.cardNextTask.setOnClickListener { openFocus() }
         binding.btnGoAddTask.setOnClickListener {
             startActivity(Intent(this, TaskListActivity::class.java))
         }
-    }
-
-    private fun setupPermissionBanner() {
+        binding.fabAddTodo.setOnClickListener { showQuickAddDialog() }
         binding.btnGrantPermission.setOnClickListener {
             UsageStatsHelper.openUsageAccessSettings(this)
         }
+    }
+
+    private fun openFocus() {
+        val task = nextTask ?: return
+        startActivity(
+            Intent(this, ReminderActivity::class.java)
+                .putExtra(ReminderActivity.EXTRA_USAGE, SessionUsage.currentMs(this))
+                .putExtra(ReminderActivity.EXTRA_TASK_ID, task.id)
+        )
+    }
+
+    /** 底部圆形加号：弹窗快速添加待办（默认 30 分钟） */
+    private fun showQuickAddDialog() {
+        val input = EditText(this).apply {
+            hint = "要做什么…"
+            inputType = InputType.TYPE_CLASS_TEXT
+            maxLines = 1
+        }
+        val pad = (16 * resources.displayMetrics.density).toInt()
+        input.setPadding(pad, pad, pad, pad)
+
+        AlertDialog.Builder(this)
+            .setTitle("快速添加待办")
+            .setView(input)
+            .setPositiveButton("添加") { _, _ ->
+                val title = input.text?.toString()?.trim().orEmpty()
+                if (title.isEmpty()) {
+                    Toast.makeText(this, "先输入要做的事", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                lifecycleScope.launch {
+                    repository.add(title, 30, 0)
+                    Toast.makeText(this@MainActivity, "已加入待办", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("取消", null)
+            .show()
     }
 
     private fun updatePermissionBanner() {
@@ -147,30 +169,20 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             repository.allTasks.collectLatest { tasks ->
                 val pending = tasks.filter { !it.done }
-                val next = pending.firstOrNull()
+                nextTask = pending.firstOrNull()
+                val next = nextTask
                 binding.tvPendingCount.text =
                     if (pending.isEmpty()) "暂无待办任务" else "还有 ${pending.size} 个待办未完成"
                 if (next != null) {
                     binding.cardNextTask.visibility = View.VISIBLE
                     binding.cardNoTask.visibility = View.GONE
-                    showNextTask(next)
+                    binding.tvNextTitle.text = next.title
+                    binding.tvNextMeta.text = "预计 ${next.durationMinutes} 分钟"
                 } else {
                     binding.cardNextTask.visibility = View.GONE
                     binding.cardNoTask.visibility = View.VISIBLE
                 }
             }
-        }
-    }
-
-    private fun showNextTask(task: Task) {
-        binding.tvNextTitle.text = task.title
-        binding.tvNextMeta.text = "预计 ${task.durationMinutes} 分钟"
-        binding.btnStartFocus.setOnClickListener {
-            startActivity(
-                Intent(this, ReminderActivity::class.java)
-                    .putExtra(ReminderActivity.EXTRA_USAGE, SessionUsage.currentMs(this))
-                    .putExtra(ReminderActivity.EXTRA_TASK_ID, task.id)
-            )
         }
     }
 

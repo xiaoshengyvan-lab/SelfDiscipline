@@ -21,19 +21,24 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * 自律提醒页（全屏弹出）：
- *  - 显示本次解锁已使用时长
- *  - 显示“该去做什么”：自动推荐下一个最优先的未完成任务
- *  - 「开始专注」倒计时（时长 = 任务设置的预计时长），倒计时状态跨页面/进程保留，
- *    返回首页再进来会继续剩余时间，无需重新开始
- *  - 「稍后提醒」（10/30/60 分钟）、「关闭本次提醒」（下次解锁自动恢复）
+ * 专注页（全屏弹出）：
+ *  - 只展示居中的专注倒计时（不显示使用时长等冗余信息）
+ *  - 点击卡片：开始倒计时；再次点击：暂停（不重置）；倒计时正常走完后自动重置
+ *  - 倒计时状态跨页面/进程保留（返回首页再进入继续）
+ *  - 倒计时结束弹出「专注完成」提醒
+ *  - 「我已完成这个任务」「换一个任务」「关闭本次提醒」
  */
 class ReminderActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_USAGE = "extra_usage"
         const val EXTRA_TASK_ID = "extra_task_id"
+        private const val STATE_REMAINING = "state_remaining"
         private const val STATE_DEADLINE = "state_deadline"
+
+        private const val MODE_IDLE = 0
+        private const val MODE_COUNTING = 1
+        private const val MODE_PAUSED = 2
     }
 
     private lateinit var binding: ActivityReminderBinding
@@ -41,7 +46,9 @@ class ReminderActivity : AppCompatActivity() {
     private val settings by lazy { AppSettings(this) }
 
     private var currentTask: Task? = null
+    private var remainingMs = 0L
     private var deadlineAt = 0L
+    private var mode = MODE_IDLE
     private var tickerJob: Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,37 +58,25 @@ class ReminderActivity : AppCompatActivity() {
 
         cancelReminderNotification()
         setupButtons()
-        deadlineAt = savedInstanceState?.getLong(STATE_DEADLINE, 0L) ?: 0L
-        // 恢复进行中的专注（跨页面/进程保留）
-        if (deadlineAt <= 0L && settings.focusDeadlineElapsed > SystemClock.elapsedRealtime()) {
-            deadlineAt = settings.focusDeadlineElapsed
-        }
-        showUsageText(intent.getLongExtra(EXTRA_USAGE, 0L))
-    }
 
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        setIntent(intent)
-        cancelReminderNotification()
-        showUsageText(intent.getLongExtra(EXTRA_USAGE, 0L))
-        if (deadlineAt > SystemClock.elapsedRealtime()) {
-            restoreFocus()
+        if (savedInstanceState != null) {
+            remainingMs = savedInstanceState.getLong(STATE_REMAINING, 0L)
+            deadlineAt = savedInstanceState.getLong(STATE_DEADLINE, 0L)
         } else {
-            reloadTask()
+            restoreFocusState()
         }
+        render()
     }
 
     override fun onResume() {
         super.onResume()
-        if (deadlineAt > SystemClock.elapsedRealtime()) {
-            restoreFocus()
-        } else {
-            reloadTask()
-        }
+        // 跨页面/进程恢复：刷新计时状态
+        refreshFromPersistence()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
+        outState.putLong(STATE_REMAINING, remainingMs)
         outState.putLong(STATE_DEADLINE, deadlineAt)
     }
 
@@ -97,49 +92,74 @@ class ReminderActivity : AppCompatActivity() {
         nm.cancel(ReminderNotifier.NOTIFICATION_ID)
     }
 
-    private fun showUsageText(usageMillis: Long) {
-        binding.tvRemindUsage.text = "本次解锁已使用 ${TimeFormat.formatDuration(usageMillis)}"
-    }
-
     private fun setupButtons() {
-        binding.btnStart.setOnClickListener { startFocus() }
+        // 点击卡片：开始 / 暂停 / 继续
+        binding.cardTask.setOnClickListener { onCardTap() }
         binding.btnComplete.setOnClickListener { completeTask() }
         binding.btnSkip.setOnClickListener { loadNextTask() }
-        binding.btnSnooze10.setOnClickListener { snooze(10) }
-        binding.btnSnooze30.setOnClickListener { snooze(30) }
-        binding.btnSnooze60.setOnClickListener { snooze(60) }
         binding.btnMuteSession.setOnClickListener { muteSession() }
         binding.btnAddTask.setOnClickListener {
             TaskEditActivity.start(this, null)
         }
     }
 
-    // ---------- 任务加载 ----------
+    // ---------- 状态恢复 ----------
 
-    private fun reloadTask() {
-        val taskId = intent.getLongExtra(EXTRA_TASK_ID, -1L)
-        lifecycleScope.launch {
-            val task = if (taskId > 0) repository.getById(taskId) else repository.nextPending()
-            if (task != null) showTask(task) else showNoTask()
+    private fun restoreFocusState() {
+        val deadline = settings.focusDeadlineElapsed
+        val now = SystemClock.elapsedRealtime()
+        when {
+            deadline > now -> {
+                deadlineAt = deadline
+                mode = MODE_COUNTING
+            }
+            settings.focusRemainingMs > 0L && settings.focusTaskId >= 0L -> {
+                remainingMs = settings.focusRemainingMs
+                mode = MODE_PAUSED
+            }
+            else -> mode = MODE_IDLE
         }
     }
 
-    /** 恢复进行中的专注倒计时 */
-    private fun restoreFocus() {
-        val taskId = settings.focusTaskId
-        lifecycleScope.launch {
-            val task = if (taskId > 0) repository.getById(taskId) else null
-            if (task != null) {
-                showTask(task)
+    /** 从持久化状态刷新（进程被杀 / 返回页面时调用） */
+    private fun refreshFromPersistence() {
+        if (currentTask == null) {
+            restoreFocusState()
+            val intentTaskId = intent.getLongExtra(EXTRA_TASK_ID, -1L)
+            val taskId = if (mode != MODE_IDLE) {
+                settings.focusTaskId.takeIf { it >= 0L } ?: -1L
             } else {
-                // 任务可能已被删除：用保存的信息兜底显示
-                showTask(
-                    Task(
-                        id = taskId,
-                        title = settings.focusTaskTitle.ifEmpty { "专注中" },
-                        durationMinutes = settings.focusTaskDurationMinutes
-                    )
-                )
+                intentTaskId
+            }
+            loadTask(taskId)
+            return
+        }
+        if (mode == MODE_COUNTING) {
+            val remaining = deadlineAt - SystemClock.elapsedRealtime()
+            if (remaining <= 0L) {
+                finishFocus()
+            } else {
+                startTicker()
+            }
+        } else {
+            render()
+        }
+    }
+
+    private fun loadTask(taskId: Long) {
+        lifecycleScope.launch {
+            val task = if (taskId > 0) repository.getById(taskId) else repository.nextPending()
+            if (task != null) {
+                currentTask = task
+                if (mode == MODE_IDLE) {
+                    remainingMs = task.durationMinutes * 60_000L
+                }
+                render()
+                if (mode == MODE_COUNTING && deadlineAt > SystemClock.elapsedRealtime()) {
+                    startTicker()
+                }
+            } else {
+                showNoTask()
             }
         }
     }
@@ -147,71 +167,49 @@ class ReminderActivity : AppCompatActivity() {
     private fun showNoTask() {
         currentTask = null
         tickerJob?.cancel()
-        deadlineAt = 0L
         binding.cardTask.visibility = View.GONE
         binding.tvNoTask.visibility = View.VISIBLE
         binding.btnAddTask.visibility = View.VISIBLE
-        binding.btnStart.visibility = View.GONE
         binding.btnComplete.visibility = View.GONE
         binding.btnSkip.visibility = View.GONE
-        binding.tvCountdown.visibility = View.GONE
-        binding.progressFocus.visibility = View.GONE
-        binding.tvFocusHint.visibility = View.GONE
-        binding.btnSnooze10.visibility = View.GONE
-        binding.btnSnooze30.visibility = View.GONE
-        binding.btnSnooze60.visibility = View.GONE
         binding.btnMuteSession.visibility = View.GONE
     }
 
-    private fun showTask(task: Task) {
-        currentTask = task
-        binding.cardTask.visibility = View.VISIBLE
-        binding.tvNoTask.visibility = View.GONE
-        binding.btnAddTask.visibility = View.GONE
-        binding.btnSkip.visibility = View.VISIBLE
-        binding.btnSnooze10.visibility = View.VISIBLE
-        binding.btnSnooze30.visibility = View.VISIBLE
-        binding.btnSnooze60.visibility = View.VISIBLE
-        binding.btnMuteSession.visibility = View.VISIBLE
-        binding.tvTaskTitle.text = task.title
-        binding.tvTaskMeta.text = "预计时长 ${task.durationMinutes} 分钟"
+    // ---------- 卡片点击：开始 / 暂停 / 继续 ----------
 
-        val remaining = deadlineAt - SystemClock.elapsedRealtime()
-        if (remaining > 0) {
-            // 计时进行中（返回首页后再进入 / 旋转屏幕后恢复）
-            binding.btnStart.visibility = View.GONE
-            binding.btnComplete.visibility = View.VISIBLE
-            binding.tvFocusHint.text = "专注中 · 返回后自动继续"
-            startTicker()
-        } else {
-            deadlineAt = 0L
-            tickerJob?.cancel()
-            binding.btnStart.visibility = View.VISIBLE
-            binding.btnComplete.visibility = View.GONE
-            binding.tvFocusHint.text = "开始专注"
-            binding.tvCountdown.text = TimeFormat.formatCountdown(task.durationMinutes * 60_000L)
-            binding.progressFocus.progress = 0
+    private fun onCardTap() {
+        when (mode) {
+            MODE_IDLE -> startFocus()
+            MODE_COUNTING -> pauseFocus()
+            MODE_PAUSED -> resumeFocus()
         }
-        binding.tvCountdown.visibility = View.VISIBLE
-        binding.progressFocus.visibility = View.VISIBLE
-        binding.tvFocusHint.visibility = View.VISIBLE
     }
-
-    // ---------- 专注计时 ----------
 
     private fun startFocus() {
         val task = currentTask ?: return
-        deadlineAt = SystemClock.elapsedRealtime() + task.durationMinutes * 60_000L
-        // 持久化专注状态：返回首页/进程被杀后仍可恢复
+        remainingMs = task.durationMinutes * 60_000L
         settings.focusTaskId = task.id
         settings.focusTaskTitle = task.title
         settings.focusTaskDurationMinutes = task.durationMinutes
-        settings.focusDeadlineElapsed = deadlineAt
+        settings.focusRemainingMs = remainingMs
+        resumeFocus()
+    }
 
-        binding.btnStart.visibility = View.GONE
-        binding.btnComplete.visibility = View.VISIBLE
-        binding.tvFocusHint.text = "专注中 · 返回后自动继续"
+    private fun resumeFocus() {
+        if (remainingMs <= 0L) return
+        deadlineAt = SystemClock.elapsedRealtime() + remainingMs
+        settings.focusDeadlineElapsed = deadlineAt
+        mode = MODE_COUNTING
         startTicker()
+    }
+
+    private fun pauseFocus() {
+        tickerJob?.cancel()
+        remainingMs = (deadlineAt - SystemClock.elapsedRealtime()).coerceAtLeast(0L)
+        settings.focusRemainingMs = remainingMs
+        settings.focusDeadlineElapsed = 0L
+        mode = MODE_PAUSED
+        render()
     }
 
     private fun startTicker() {
@@ -219,20 +217,55 @@ class ReminderActivity : AppCompatActivity() {
         tickerJob = lifecycleScope.launch {
             while (true) {
                 val remain = deadlineAt - SystemClock.elapsedRealtime()
-                if (remain <= 0) {
-                    binding.tvCountdown.text = "00:00"
-                    binding.progressFocus.progress = 100
-                    binding.tvFocusHint.text = "时间到！给自己一点奖励吧 🎉"
-                    settings.clearFocus()
+                if (remain <= 0L) {
+                    finishFocus()
                     break
                 }
                 binding.tvCountdown.text = TimeFormat.formatCountdown(remain)
-                val total = (currentTask?.durationMinutes ?: 30) * 60_000L
-                binding.progressFocus.progress = ((total - remain) * 100 / total).toInt()
-                delay(1000L)
+                delay(250L)
             }
         }
+        render()
     }
+
+    /** 倒计时正常走完：重置并弹完成提醒 */
+    private fun finishFocus() {
+        tickerJob?.cancel()
+        val title = currentTask?.title ?: settings.focusTaskTitle.ifEmpty { "专注" }
+        settings.clearFocus()
+        remainingMs = 0L
+        deadlineAt = 0L
+        mode = MODE_IDLE
+        ReminderNotifier.showFocusFinished(this, title)
+        loadTask(-1L)
+    }
+
+    // ---------- 渲染 ----------
+
+    private fun render() {
+        if (currentTask == null) return
+        binding.cardTask.visibility = View.VISIBLE
+        binding.tvNoTask.visibility = View.GONE
+        binding.btnAddTask.visibility = View.GONE
+        binding.btnComplete.visibility = View.VISIBLE
+        binding.btnSkip.visibility = View.VISIBLE
+        binding.btnMuteSession.visibility = View.VISIBLE
+        binding.tvTaskTitle.text = currentTask?.title ?: "专注"
+
+        val displayMs = when (mode) {
+            MODE_COUNTING -> (deadlineAt - SystemClock.elapsedRealtime()).coerceAtLeast(0L)
+            MODE_PAUSED -> remainingMs
+            else -> (currentTask?.durationMinutes ?: 30) * 60_000L
+        }
+        binding.tvCountdown.text = TimeFormat.formatCountdown(displayMs)
+        binding.tvFocusHint.text = when (mode) {
+            MODE_COUNTING -> "点击暂停"
+            MODE_PAUSED -> "点击继续"
+            else -> "点击开始专注"
+        }
+    }
+
+    // ---------- 其他操作 ----------
 
     private fun completeTask() {
         val task = currentTask ?: return
@@ -247,6 +280,11 @@ class ReminderActivity : AppCompatActivity() {
 
     private fun loadNextTask() {
         val current = currentTask
+        tickerJob?.cancel()
+        settings.clearFocus()
+        remainingMs = 0L
+        deadlineAt = 0L
+        mode = MODE_IDLE
         lifecycleScope.launch {
             val next = if (current != null) {
                 repository.nextPendingExcluding(current.id)
@@ -255,20 +293,13 @@ class ReminderActivity : AppCompatActivity() {
             }
             if (next == null) {
                 Toast.makeText(this@ReminderActivity, "没有其他待办任务了", Toast.LENGTH_SHORT).show()
+                showNoTask()
                 return@launch
             }
-            tickerJob?.cancel()
-            deadlineAt = 0L
-            showTask(next)
+            currentTask = next
+            remainingMs = next.durationMinutes * 60_000L
+            render()
         }
-    }
-
-    // ---------- 稍后提醒 / 关闭本次 ----------
-
-    private fun snooze(minutes: Int) {
-        settings.snoozeUntilMs = System.currentTimeMillis() + minutes * 60_000L
-        Toast.makeText(this, "$minutes 分钟后再次提醒", Toast.LENGTH_SHORT).show()
-        finish()
     }
 
     private fun muteSession() {
