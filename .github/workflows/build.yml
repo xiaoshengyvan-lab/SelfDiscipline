@@ -1,0 +1,80 @@
+# 云构建：把工程推到 GitHub 后，在 Actions 页面自动编译 APK 并供下载
+# 使用方法：
+#   1. 在 GitHub 创建仓库并把本工程推上去
+#   2. 打开仓库的 Actions 页面，选择 "Build APK" 工作流
+#   3. 点击 "Run workflow"（或在 main/master 分支推送 / 打 v* 标签时自动触发）
+#   4. 运行完成后在本次运行的 Artifacts 中下载 app-debug-apk 即可安装到手机
+#   5. 打 v* 标签推送时，还会自动创建 GitHub Release，可直接从 Release 页面下载 APK
+
+name: Build APK
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK (platform 34 + build-tools)
+        run: |
+          echo "y" | sdkmanager --licenses >/dev/null 2>&1 || true
+          sdkmanager --install "platforms;android-34" "build-tools;34.0.0" "platform-tools" >/dev/null
+
+      # 仓库未包含 gradle-wrapper.jar（二进制文件无法在此环境生成），
+      # 云端联网后从 Gradle 官方仓库恢复它
+      - name: Restore Gradle wrapper jar
+        run: |
+          curl -fsSL -o gradle/wrapper/gradle-wrapper.jar \
+            https://raw.githubusercontent.com/gradle/gradle/v8.9.0/gradle/wrapper/gradle-wrapper.jar
+          chmod +x gradlew
+
+      - name: Set up Gradle (含构建缓存)
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Upload APK (Actions 产物)
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+
+  # 打 v* 标签时：自动发布 GitHub Release，APK 挂载在 Release 页面可直接下载
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download APK
+        uses: actions/download-artifact@v4
+        with:
+          name: app-debug-apk
+          path: apk
+
+      - name: Publish Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: apk/app-debug.apk
+          generate_release_notes: true
