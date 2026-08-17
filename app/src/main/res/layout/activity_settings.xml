@@ -269,7 +269,7 @@
                         android:textAppearance="?attr/textAppearanceBodySmall"
                         android:textColor="@color/text_secondary" />
 
-                    <!-- 小米超级岛（仅小米设备显示）：通知上岛引导 -->
+                    <!-- 动态岛类通知引导（超级岛/焦点通知/灵动胶囊/流体云/实况窗） -->
                     <LinearLayout
                         android:id="@+id/layoutSuperIsland"
                         android:layout_width="match_parent"
@@ -280,10 +280,11 @@
                         android:visibility="gone">
 
                         <TextView
+                            android:id="@+id/tvSuperIslandText"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="超级岛：提醒通知到达时会上岛显示，请到系统设置开启通知上岛"
+                            android:text="动态岛通知：到系统设置开启通知上岛显示"
                             android:textColor="@color/text_secondary"
                             android:textSize="13sp" />
 

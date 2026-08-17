@@ -19,11 +19,44 @@ import android.provider.Settings
  */
 object DeviceCompat {
 
-    /** 设备家族：xiaomi / honor / other */
+    /** 设备家族：xiaomi / honor / vivo / oppo / huawei / other */
     fun deviceFamily(): String = when {
         isHonorDevice() -> "honor"
         isXiaomiDevice() -> "xiaomi"
+        isVivoDevice() -> "vivo"
+        isOppoDevice() -> "oppo"
+        isHuaweiDevice() -> "huawei"
         else -> "other"
+    }
+
+    /** 是否为 vivo / iQOO（OriginOS，焦点通知） */
+    fun isVivoDevice(): Boolean {
+        val manufacturer = Build.MANUFACTURER?.lowercase() ?: ""
+        val brand = Build.BRAND?.lowercase() ?: ""
+        val display = Build.DISPLAY?.lowercase() ?: ""
+        return manufacturer.contains("vivo") || brand.contains("vivo") || brand.contains("iqoo") ||
+            display.contains("originos")
+    }
+
+    /** 是否为 OPPO / realme / 一加（ColorOS，流体云） */
+    fun isOppoDevice(): Boolean {
+        val manufacturer = Build.MANUFACTURER?.lowercase() ?: ""
+        val brand = Build.BRAND?.lowercase() ?: ""
+        val display = Build.DISPLAY?.lowercase() ?: ""
+        return manufacturer.contains("oppo") || brand.contains("oppo") ||
+            brand.contains("realme") || brand.contains("oneplus") ||
+            display.contains("coloros")
+    }
+
+    /** 是否为华为（EMUI / HarmonyOS，实况窗） */
+    fun isHuaweiDevice(): Boolean {
+        val manufacturer = Build.MANUFACTURER?.lowercase() ?: ""
+        val brand = Build.BRAND?.lowercase() ?: ""
+        val display = Build.DISPLAY?.lowercase() ?: ""
+        val fingerprint = Build.FINGERPRINT?.lowercase() ?: ""
+        return manufacturer.contains("huawei") || brand.contains("huawei") ||
+            display.contains("emui") || display.contains("harmonyos") ||
+            fingerprint.contains("huawei")
     }
 
     /** 是否为小米系设备（小米 / 红米 / POCO，含 MIUI 与 HyperOS） */
@@ -72,8 +105,21 @@ object DeviceCompat {
         isHonorDevice() -> "Honor"
         isHyperOs() -> "HyperOS"
         isMiuiRom() -> "MIUI"
+        isOriginOs() -> "OriginOS"
+        isVivoDevice() -> "vivo"
+        isColorOs() -> "ColorOS"
+        isOppoDevice() -> "OPPO"
+        isHuaweiDevice() -> "Huawei"
         else -> "Android"
     }
+
+    /** 是否为 OriginOS（vivo） */
+    fun isOriginOs(): Boolean =
+        (Build.DISPLAY?.lowercase() ?: "").contains("originos")
+
+    /** 是否为 ColorOS（OPPO 系） */
+    fun isColorOs(): Boolean =
+        (Build.DISPLAY?.lowercase() ?: "").contains("coloros")
 
     // ---------- 权限页跳转 ----------
 

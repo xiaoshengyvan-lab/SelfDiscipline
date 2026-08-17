@@ -126,8 +126,8 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     /**
-     * 系统适配卡片：小米系（MIUI/HyperOS）或荣耀系（MagicOS）设备显示，
-     * 按设备类型展示对应的权限引导与跳转按钮。
+     * 系统适配卡片：按设备品牌展示对应权限引导与「动态岛通知」说明
+     * （小米超级岛 / vivo 焦点通知 / 荣耀灵动胶囊 / OPPO 流体云 / 华为实况窗）
      */
     private fun setupDeviceCompat() {
         val family = DeviceCompat.deviceFamily()
@@ -137,38 +137,67 @@ class SettingsActivity : AppCompatActivity() {
         }
         binding.cardDeviceCompat.visibility = View.VISIBLE
 
-        if (family == "honor") {
-            binding.tvDeviceCompatStatus.text =
-                "检测到 ${DeviceCompat.deviceName()}（荣耀），建议完成：应用启动管理 → 电池优化"
-            binding.btnAutoStart.text = "自启动"
-            binding.btnPermEditor.text = "电池优化"
-            binding.btnAppDetails.text = "应用详情"
-            binding.btnAutoStart.setOnClickListener { DeviceCompat.openAutoStartSettings(this) }
-            binding.btnPermEditor.setOnClickListener { requestIgnoreBatteryOptimization() }
-            binding.btnAppDetails.setOnClickListener { DeviceCompat.openAppDetails(this) }
-            // 超级岛仅小米系支持
-            binding.layoutSuperIsland.visibility = View.GONE
-        } else {
-            binding.tvDeviceCompatStatus.text =
-                "检测到 ${DeviceCompat.deviceName()}，建议完成：自启动 → 后台弹出界面 → 省电策略"
-            binding.btnAutoStart.text = "自启动"
-            binding.btnPermEditor.text = "后台弹出界面"
-            binding.btnAppDetails.text = "省电策略"
-            binding.btnAutoStart.setOnClickListener { DeviceCompat.openAutoStartSettings(this) }
-            binding.btnPermEditor.setOnClickListener { DeviceCompat.openPermissionEditor(this) }
-            binding.btnAppDetails.setOnClickListener { DeviceCompat.openAppDetails(this) }
-            // 小米超级岛：通知上岛引导
-            binding.layoutSuperIsland.visibility = View.VISIBLE
-            binding.btnSuperIsland.setOnClickListener {
-                try {
-                    startActivity(
-                        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                            .putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
-                    )
-                } catch (e: Exception) {
-                    startActivity(Intent(Settings.ACTION_SETTINGS))
-                }
+        when (family) {
+            "honor" -> {
+                binding.tvDeviceCompatStatus.text =
+                    "检测到 ${DeviceCompat.deviceName()}（荣耀），建议完成：应用启动管理 → 电池优化"
+                binding.btnAutoStart.text = "自启动"
+                binding.btnPermEditor.text = "电池优化"
+                binding.btnAppDetails.text = "应用详情"
+                binding.btnAutoStart.setOnClickListener { DeviceCompat.openAutoStartSettings(this) }
+                binding.btnPermEditor.setOnClickListener { requestIgnoreBatteryOptimization() }
+                binding.btnAppDetails.setOnClickListener { DeviceCompat.openAppDetails(this) }
             }
+            "xiaomi" -> {
+                binding.tvDeviceCompatStatus.text =
+                    "检测到 ${DeviceCompat.deviceName()}，建议完成：自启动 → 后台弹出界面 → 省电策略"
+                binding.btnAutoStart.text = "自启动"
+                binding.btnPermEditor.text = "后台弹出界面"
+                binding.btnAppDetails.text = "省电策略"
+                binding.btnAutoStart.setOnClickListener { DeviceCompat.openAutoStartSettings(this) }
+                binding.btnPermEditor.setOnClickListener { DeviceCompat.openPermissionEditor(this) }
+                binding.btnAppDetails.setOnClickListener { DeviceCompat.openAppDetails(this) }
+            }
+            else -> {
+                // vivo / oppo / huawei：通用引导
+                binding.tvDeviceCompatStatus.text =
+                    "检测到 ${DeviceCompat.deviceName()}，建议完成：自启动 → 电池优化"
+                binding.btnAutoStart.text = "自启动"
+                binding.btnPermEditor.text = "电池优化"
+                binding.btnAppDetails.text = "应用详情"
+                binding.btnAutoStart.setOnClickListener { DeviceCompat.openAutoStartSettings(this) }
+                binding.btnPermEditor.setOnClickListener { requestIgnoreBatteryOptimization() }
+                binding.btnAppDetails.setOnClickListener { DeviceCompat.openAppDetails(this) }
+            }
+        }
+
+        // 动态岛类通知引导（通知到达时上岛/上胶囊显示）
+        val islandLabel = when (family) {
+            "xiaomi" -> "超级岛：提醒通知到达时上岛显示"
+            "honor" -> "灵动胶囊：提醒通知到达时上胶囊显示"
+            "vivo" -> "焦点通知：提醒通知到达时以焦点通知显示"
+            "oppo" -> "流体云：提醒通知到达时上流体云显示"
+            "huawei" -> "实况窗：提醒通知到达时上实况窗显示"
+            else -> null
+        }
+        if (islandLabel != null) {
+            binding.layoutSuperIsland.visibility = View.VISIBLE
+            binding.tvSuperIslandText.text = islandLabel
+            binding.btnSuperIsland.setOnClickListener { openAppNotificationSettings() }
+        } else {
+            binding.layoutSuperIsland.visibility = View.GONE
+        }
+    }
+
+    /** 打开本应用通知设置页（各品牌动态岛开关均在此附近） */
+    private fun openAppNotificationSettings() {
+        try {
+            startActivity(
+                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                    .putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+            )
+        } catch (e: Exception) {
+            startActivity(Intent(Settings.ACTION_SETTINGS))
         }
     }
 
