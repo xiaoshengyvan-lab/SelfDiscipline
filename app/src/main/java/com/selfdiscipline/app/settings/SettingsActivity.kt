@@ -70,12 +70,7 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun enableMonitoring() {
-        if (!UsageStatsHelper.hasUsageAccess(this)) {
-            Toast.makeText(this, "请先授予「使用情况访问」权限", Toast.LENGTH_SHORT).show()
-            UsageStatsHelper.openUsageAccessSettings(this)
-            syncSwitchState()
-            return
-        }
+        // 会话计时基于屏幕事件，无需「使用情况访问」权限即可工作
         settings.monitoringEnabled = true
         UsageMonitorService.start(this)
         Toast.makeText(this, "自律监控已开启", Toast.LENGTH_SHORT).show()

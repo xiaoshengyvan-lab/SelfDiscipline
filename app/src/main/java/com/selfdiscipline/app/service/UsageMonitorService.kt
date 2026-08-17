@@ -106,6 +106,8 @@ class UsageMonitorService : Service() {
 
         if (!started) {
             started = true
+            // 服务启动时同步当前屏幕状态：亮屏且未锁屏则立即开始计时
+            SessionUsage.resumeIfNeeded(this)
             ServiceCompat.startForeground(
                 this,
                 NOTIFICATION_ID,

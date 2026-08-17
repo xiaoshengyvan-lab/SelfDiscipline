@@ -87,6 +87,10 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         updatePermissionBanner()
+        // 开关已开启时确保后台监控服务在运行（服务被杀/升级后自动恢复）
+        if (settings.monitoringEnabled) {
+            UsageMonitorService.start(this)
+        }
         showUsage(SessionUsage.currentMs(this))
     }
 
@@ -179,10 +183,11 @@ class MainActivity : AppCompatActivity() {
         val progress = if (threshold > 0) (usageMillis.toFloat() / threshold).coerceIn(0f, 1f) else 0f
         binding.progressUsage.progress = (progress * 100).toInt()
 
-        binding.tvUsageHint.text = if (usageMillis >= threshold) {
-            "已达阈值 ${settings.dailyThresholdMinutes} 分钟"
-        } else {
-            "距提醒还差 ${TimeFormat.formatDuration(threshold - usageMillis)}"
+        binding.tvUsageHint.text = when {
+            !settings.monitoringEnabled -> "自律提醒未开启 · 请到设置页开启"
+            usageMillis <= 0L -> "解锁手机后开始计时"
+            usageMillis >= threshold -> "已达阈值 ${settings.dailyThresholdMinutes} 分钟"
+            else -> "距提醒还差 ${TimeFormat.formatDuration(threshold - usageMillis)}"
         }
     }
 }
