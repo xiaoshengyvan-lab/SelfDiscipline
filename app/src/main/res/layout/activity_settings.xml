@@ -306,7 +306,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="系统适配（HyperOS / MIUI）"
+                        android:text="系统适配（HyperOS / MIUI / MagicOS）"
                         android:textAppearance="?attr/textAppearanceTitleMedium" />
 
                     <TextView

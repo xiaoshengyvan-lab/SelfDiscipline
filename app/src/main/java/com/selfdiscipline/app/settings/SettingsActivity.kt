@@ -127,17 +127,37 @@ class SettingsActivity : AppCompatActivity() {
         binding.btnBattery.visibility = if (ignoring) View.GONE else View.VISIBLE
     }
 
+    /**
+     * 系统适配卡片：小米系（MIUI/HyperOS）或荣耀系（MagicOS）设备显示，
+     * 按设备类型展示对应的权限引导与跳转按钮。
+     */
     private fun setupDeviceCompat() {
-        if (!DeviceCompat.isXiaomiDevice()) {
+        val family = DeviceCompat.deviceFamily()
+        if (family == "other") {
             binding.cardDeviceCompat.visibility = View.GONE
             return
         }
         binding.cardDeviceCompat.visibility = View.VISIBLE
-        binding.tvDeviceCompatStatus.text =
-            "检测到 ${DeviceCompat.deviceName()}，建议完成：自启动 → 后台弹出界面 → 省电策略"
-        binding.btnAutoStart.setOnClickListener { DeviceCompat.openAutoStartSettings(this) }
-        binding.btnPermEditor.setOnClickListener { DeviceCompat.openPermissionEditor(this) }
-        binding.btnAppDetails.setOnClickListener { DeviceCompat.openAppDetails(this) }
+
+        if (family == "honor") {
+            binding.tvDeviceCompatStatus.text =
+                "检测到 ${DeviceCompat.deviceName()}（荣耀），建议完成：应用启动管理 → 电池优化"
+            binding.btnAutoStart.text = "自启动"
+            binding.btnPermEditor.text = "电池优化"
+            binding.btnAppDetails.text = "应用详情"
+            binding.btnAutoStart.setOnClickListener { DeviceCompat.openAutoStartSettings(this) }
+            binding.btnPermEditor.setOnClickListener { requestIgnoreBatteryOptimization() }
+            binding.btnAppDetails.setOnClickListener { DeviceCompat.openAppDetails(this) }
+        } else {
+            binding.tvDeviceCompatStatus.text =
+                "检测到 ${DeviceCompat.deviceName()}，建议完成：自启动 → 后台弹出界面 → 省电策略"
+            binding.btnAutoStart.text = "自启动"
+            binding.btnPermEditor.text = "后台弹出界面"
+            binding.btnAppDetails.text = "省电策略"
+            binding.btnAutoStart.setOnClickListener { DeviceCompat.openAutoStartSettings(this) }
+            binding.btnPermEditor.setOnClickListener { DeviceCompat.openPermissionEditor(this) }
+            binding.btnAppDetails.setOnClickListener { DeviceCompat.openAppDetails(this) }
+        }
     }
 
     private fun requestIgnoreBatteryOptimization() {
