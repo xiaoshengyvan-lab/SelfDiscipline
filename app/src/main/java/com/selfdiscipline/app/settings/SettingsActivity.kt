@@ -146,6 +146,8 @@ class SettingsActivity : AppCompatActivity() {
             binding.btnAutoStart.setOnClickListener { DeviceCompat.openAutoStartSettings(this) }
             binding.btnPermEditor.setOnClickListener { requestIgnoreBatteryOptimization() }
             binding.btnAppDetails.setOnClickListener { DeviceCompat.openAppDetails(this) }
+            // 超级岛仅小米系支持
+            binding.layoutSuperIsland.visibility = View.GONE
         } else {
             binding.tvDeviceCompatStatus.text =
                 "检测到 ${DeviceCompat.deviceName()}，建议完成：自启动 → 后台弹出界面 → 省电策略"
@@ -155,6 +157,15 @@ class SettingsActivity : AppCompatActivity() {
             binding.btnAutoStart.setOnClickListener { DeviceCompat.openAutoStartSettings(this) }
             binding.btnPermEditor.setOnClickListener { DeviceCompat.openPermissionEditor(this) }
             binding.btnAppDetails.setOnClickListener { DeviceCompat.openAppDetails(this) }
+            // 小米超级岛：通知上岛引导
+            binding.layoutSuperIsland.visibility = View.VISIBLE
+            binding.btnSuperIsland.setOnClickListener {
+                try {
+                    startActivity(Intent(Settings.ACTION_NOTIFICATION_SETTINGS))
+                } catch (e: Exception) {
+                    startActivity(Intent(Settings.ACTION_SETTINGS))
+                }
+            }
         }
     }
 

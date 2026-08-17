@@ -269,6 +269,35 @@
                         android:textAppearance="?attr/textAppearanceBodySmall"
                         android:textColor="@color/text_secondary" />
 
+                    <!-- 小米超级岛（仅小米设备显示）：通知上岛引导 -->
+                    <LinearLayout
+                        android:id="@+id/layoutSuperIsland"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="超级岛：提醒通知到达时会上岛显示，请到系统设置开启通知上岛"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="13sp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnSuperIsland"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:minWidth="0dp"
+                            android:paddingStart="14dp"
+                            android:paddingEnd="14dp"
+                            android:text="去设置"
+                            style="@style/Widget.Material3.Button.TextButton" />
+                    </LinearLayout>
+
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
