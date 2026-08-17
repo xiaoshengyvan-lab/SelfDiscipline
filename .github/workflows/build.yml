@@ -75,10 +75,20 @@ jobs:
       - name: Set up Gradle (含构建缓存)
         uses: gradle/actions/setup-gradle@v3
 
-      - name: Build debug APK
-        run: ./gradlew assembleDebug --stacktrace
+      - name: Build debug APK (log to summary)
+        continue-on-error: true
+        run: |
+          ./gradlew assembleDebug --stacktrace > /tmp/build.log 2>&1 || true
+          {
+            echo "### Build tail"
+            tail -n 100 /tmp/build.log
+            echo ""
+            echo "### Errors"
+            grep -nE "e: |error:|What went wrong|Caused by|FAILURE|Execution failed|Could not|Unresolved" /tmp/build.log | tail -n 50
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload APK (Actions 产物)
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: app-debug-apk
