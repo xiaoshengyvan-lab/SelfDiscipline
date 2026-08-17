@@ -140,7 +140,9 @@ class SettingsActivity : AppCompatActivity() {
         when (family) {
             "honor" -> {
                 binding.tvDeviceCompatStatus.text =
-                    "检测到 ${DeviceCompat.deviceName()}（荣耀），建议完成：应用启动管理 → 电池优化"
+                    "检测到 ${DeviceCompat.deviceName()}（荣耀），建议完成：应用启动管理 → 电池优化 → 灵动胶囊"
+                binding.tvCompatHint.text =
+                    "提示：提醒页全屏弹出需在「应用管理 → 权限」中允许「应用内其他界面」（后台弹窗）"
                 binding.btnAutoStart.text = "自启动"
                 binding.btnPermEditor.text = "电池优化"
                 binding.btnAppDetails.text = "应用详情"
@@ -151,6 +153,8 @@ class SettingsActivity : AppCompatActivity() {
             "xiaomi" -> {
                 binding.tvDeviceCompatStatus.text =
                     "检测到 ${DeviceCompat.deviceName()}，建议完成：自启动 → 后台弹出界面 → 省电策略"
+                binding.tvCompatHint.text =
+                    "提示：提醒全屏弹出需允许「后台弹出界面」权限"
                 binding.btnAutoStart.text = "自启动"
                 binding.btnPermEditor.text = "后台弹出界面"
                 binding.btnAppDetails.text = "省电策略"
@@ -162,6 +166,8 @@ class SettingsActivity : AppCompatActivity() {
                 // vivo / oppo / huawei：通用引导
                 binding.tvDeviceCompatStatus.text =
                     "检测到 ${DeviceCompat.deviceName()}，建议完成：自启动 → 电池优化"
+                binding.tvCompatHint.text =
+                    "提示：提醒全屏弹出需允许应用「后台弹窗 / 悬浮窗」类权限"
                 binding.btnAutoStart.text = "自启动"
                 binding.btnPermEditor.text = "电池优化"
                 binding.btnAppDetails.text = "应用详情"
