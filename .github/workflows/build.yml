@@ -51,17 +51,24 @@ jobs:
             exit 1
           fi
           yes | "$SM" --licenses >/dev/null 2>&1 || true
-          "$SM" --install "platforms;android-34" "build-tools;34.0.0" "platform-tools" >/dev/null 2>&1 || true
+          # 安装带重试，避免瞬时网络故障
+          for i in 1 2 3; do
+            "$SM" --install "platforms;android-34" "build-tools;34.0.0" "platform-tools" >/dev/null 2>&1 && break
+            sleep 5
+          done || true
           ls "$ANDROID_HOME/platforms" 2>/dev/null || true
 
       # 仓库未包含 gradle-wrapper.jar（二进制文件无法在此环境生成），
-      # 云端联网后从 Gradle 官方仓库恢复（带镜像兜底）
+      # 云端联网后从 Gradle 官方仓库恢复（带镜像兜底 + 重试）
       - name: Restore Gradle wrapper jar
         run: |
-          curl -fsSL -o gradle/wrapper/gradle-wrapper.jar \
-            https://raw.githubusercontent.com/gradle/gradle/v8.9.0/gradle/wrapper/gradle-wrapper.jar \
-            || curl -fsSL -o gradle/wrapper/gradle-wrapper.jar \
-            https://cdn.jsdelivr.net/gh/gradle/gradle@v8.9.0/gradle/wrapper/gradle-wrapper.jar
+          for i in 1 2 3; do
+            curl -fsSL -o gradle/wrapper/gradle-wrapper.jar \
+              https://raw.githubusercontent.com/gradle/gradle/v8.9.0/gradle/wrapper/gradle-wrapper.jar && break
+            curl -fsSL -o gradle/wrapper/gradle-wrapper.jar \
+              https://cdn.jsdelivr.net/gh/gradle/gradle@v8.9.0/gradle/wrapper/gradle-wrapper.jar && break
+            sleep 5
+          done
           ls -l gradle/wrapper/gradle-wrapper.jar
           chmod +x gradlew
 
