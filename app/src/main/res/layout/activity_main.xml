@@ -42,7 +42,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:cardBackgroundColor="@color/surface"
-                app:cardCornerRadius="20dp"
+                app:cardCornerRadius="18dp"
                 app:cardElevation="0dp"
                 app:strokeColor="#EEEFF0"
                 app:strokeWidth="1dp">
@@ -56,7 +56,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="本次解锁使用"
+                        android:text="📱 本次解锁使用"
                         android:textAppearance="?attr/textAppearanceLabelLarge"
                         android:textColor="@color/text_secondary" />
 
@@ -135,7 +135,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
                 app:cardBackgroundColor="@color/surface"
-                app:cardCornerRadius="20dp"
+                app:cardCornerRadius="18dp"
                 app:cardElevation="0dp"
                 app:strokeColor="#EEEFF0"
                 app:strokeWidth="1dp">
@@ -149,7 +149,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="下一步要做"
+                        android:text="🎯 下一步要做"
                         android:textAppearance="?attr/textAppearanceLabelLarge"
                         android:textColor="@color/text_secondary" />
 
@@ -186,7 +186,7 @@
                 android:layout_marginTop="12dp"
                 android:visibility="gone"
                 app:cardBackgroundColor="@color/surface"
-                app:cardCornerRadius="20dp"
+                app:cardCornerRadius="18dp"
                 app:cardElevation="0dp"
                 app:strokeColor="#EEEFF0"
                 app:strokeWidth="1dp">
@@ -221,7 +221,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
                 app:cardBackgroundColor="@color/surface"
-                app:cardCornerRadius="20dp"
+                app:cardCornerRadius="18dp"
                 app:cardElevation="0dp"
                 app:strokeColor="#EEEFF0"
                 app:strokeWidth="1dp">
@@ -235,7 +235,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="快速添加待办"
+                        android:text="➕ 快速添加待办"
                         android:textAppearance="?attr/textAppearanceLabelLarge"
                         android:textColor="@color/text_secondary" />
 

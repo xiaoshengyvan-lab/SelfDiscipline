@@ -63,6 +63,8 @@ object ReminderNotifier {
             .setAutoCancel(true)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .addAction(0, "10分钟后提醒", snoozeIntent(context, 10))
+            .addAction(0, "关闭本次提醒", muteIntent(context))
             .build()
 
         try {
@@ -71,6 +73,27 @@ object ReminderNotifier {
             // 通知权限被用户拒绝时静默失败，避免崩溃
         }
     }
+
+    /** 稍后提醒动作 */
+    private fun snoozeIntent(context: Context, minutes: Int): PendingIntent =
+        PendingIntent.getBroadcast(
+            context,
+            100 + minutes,
+            Intent(context, ReminderActionReceiver::class.java)
+                .setAction(ReminderActionReceiver.ACTION_SNOOZE)
+                .putExtra(ReminderActionReceiver.EXTRA_MINUTES, minutes),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+    /** 关闭本次会话提醒动作 */
+    private fun muteIntent(context: Context): PendingIntent =
+        PendingIntent.getBroadcast(
+            context,
+            200,
+            Intent(context, ReminderActionReceiver::class.java)
+                .setAction(ReminderActionReceiver.ACTION_MUTE),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
     private fun ensureChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

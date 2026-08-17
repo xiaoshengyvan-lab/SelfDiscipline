@@ -31,7 +31,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:cardBackgroundColor="@color/surface"
-                app:cardCornerRadius="20dp"
+                app:cardCornerRadius="18dp"
                 app:cardElevation="0dp"
                 app:strokeColor="#EEEFF0"
                 app:strokeWidth="1dp">
@@ -47,7 +47,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="自律提醒"
+                        android:text="⏰ 自律提醒"
                         android:textAppearance="?attr/textAppearanceTitleMedium"
                         android:textStyle="bold" />
 
@@ -64,7 +64,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
                 app:cardBackgroundColor="@color/surface"
-                app:cardCornerRadius="20dp"
+                app:cardCornerRadius="18dp"
                 app:cardElevation="0dp"
                 app:strokeColor="#EEEFF0"
                 app:strokeWidth="1dp">
@@ -78,7 +78,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="提醒设置"
+                        android:text="⚙️ 提醒设置"
                         android:textAppearance="?attr/textAppearanceLabelLarge"
                         android:textColor="@color/text_secondary" />
 
@@ -132,7 +132,7 @@
                 android:focusable="true"
                 android:foreground="?attr/selectableItemBackground"
                 app:cardBackgroundColor="@color/surface"
-                app:cardCornerRadius="20dp"
+                app:cardCornerRadius="18dp"
                 app:cardElevation="0dp"
                 app:strokeColor="#EEEFF0"
                 app:strokeWidth="1dp">
@@ -148,7 +148,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="我的任务清单"
+                        android:text="📋 我的任务清单"
                         android:textAppearance="?attr/textAppearanceTitleMedium" />
 
                     <TextView
@@ -170,7 +170,7 @@
                 android:focusable="true"
                 android:foreground="?attr/selectableItemBackground"
                 app:cardBackgroundColor="@color/surface"
-                app:cardCornerRadius="20dp"
+                app:cardCornerRadius="18dp"
                 app:cardElevation="0dp"
                 app:strokeColor="#EEEFF0"
                 app:strokeWidth="1dp">
@@ -186,7 +186,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="模拟触发提醒"
+                        android:text="🧪 模拟触发提醒"
                         android:textAppearance="?attr/textAppearanceTitleMedium" />
 
                     <TextView
@@ -240,7 +240,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
                 app:cardBackgroundColor="@color/surface"
-                app:cardCornerRadius="20dp"
+                app:cardCornerRadius="18dp"
                 app:cardElevation="0dp"
                 app:strokeColor="#EEEFF0"
                 app:strokeWidth="1dp">
@@ -261,7 +261,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="电池优化"
+                            android:text="🔋 电池优化"
                             android:textAppearance="?attr/textAppearanceTitleMedium" />
 
                         <TextView
@@ -292,7 +292,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
                 app:cardBackgroundColor="@color/surface"
-                app:cardCornerRadius="20dp"
+                app:cardCornerRadius="18dp"
                 app:cardElevation="0dp"
                 app:strokeColor="#EEEFF0"
                 app:strokeWidth="1dp">
@@ -306,7 +306,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="系统适配（HyperOS / MIUI / MagicOS）"
+                        android:text="📱 系统适配"
                         android:textAppearance="?attr/textAppearanceTitleMedium" />
 
                     <TextView

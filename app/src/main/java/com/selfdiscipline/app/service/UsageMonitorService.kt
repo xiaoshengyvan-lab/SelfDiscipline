@@ -46,8 +46,8 @@ class UsageMonitorService : Service() {
         const val CHANNEL_MONITOR = "usage_monitor_channel"
         const val NOTIFICATION_ID = 1001
 
-        /** 亮屏期间阈值检查周期 */
-        private const val CHECK_INTERVAL_MS = 5 * 60_000L
+        /** 亮屏期间阈值检查周期（响应式：2 分钟；coroutine delay 不唤醒设备） */
+        private const val CHECK_INTERVAL_MS = 2 * 60_000L
 
         const val ACTION_STOP = "com.selfdiscipline.app.action.STOP_MONITOR"
         const val ACTION_UPDATE = "com.selfdiscipline.app.action.USAGE_UPDATE"
@@ -171,22 +171,25 @@ class UsageMonitorService : Service() {
 
     /**
      * 判断是否需要弹出自律提醒：
-     *  - 开关已开启
+     *  - 开关已开启、未关闭本次提醒、未处于“稍后提醒”期
      *  - 本次会话使用时长 >= 阈值
      *  - 距离上次提醒超过最小间隔
-     * 提醒内容会带上“下一个最该做的任务”。
+     * 提醒触发后冻结计时（本次会话不再累计），提醒内容带上“下一个最该做的任务”。
      */
     private suspend fun maybeRemind(usageMillis: Long) {
         if (!settings.monitoringEnabled) return
+        if (settings.sessionMuted) return
+        val now = System.currentTimeMillis()
+        if (now < settings.snoozeUntilMs) return
+
         val threshold = settings.dailyThresholdMinutes * 60_000L
         if (usageMillis < threshold) return
-
-        val now = System.currentTimeMillis()
         if (now - settings.lastRemindAt < settings.remindIntervalMinutes * 60_000L) return
 
         settings.lastRemindAt = now
         val task = TaskRepository.get(this).nextPending()
         ReminderNotifier.showReminder(this, usageMillis, task)
+        SessionUsage.freeze(this)
     }
 
     private fun broadcastUsage(usageMillis: Long) {

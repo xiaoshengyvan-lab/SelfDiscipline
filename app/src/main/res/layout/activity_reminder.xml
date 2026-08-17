@@ -140,19 +140,55 @@
             android:orientation="horizontal">
 
             <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSnooze10"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:minWidth="0dp"
+                android:text="10分钟后"
+                style="@style/Widget.Material3.Button.TextButton" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSnooze30"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:minWidth="0dp"
+                android:text="30分钟后"
+                style="@style/Widget.Material3.Button.TextButton" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSnooze60"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:minWidth="0dp"
+                android:text="1小时后"
+                style="@style/Widget.Material3.Button.TextButton" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnSkip"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:minWidth="0dp"
                 android:text="换一个任务"
                 style="@style/Widget.Material3.Button.TextButton" />
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnLater"
+                android:id="@+id/btnMuteSession"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="稍后再说"
+                android:minWidth="0dp"
+                android:text="关闭本次提醒"
+                android:textColor="?attr/colorError"
                 style="@style/Widget.Material3.Button.TextButton" />
         </LinearLayout>
     </LinearLayout>

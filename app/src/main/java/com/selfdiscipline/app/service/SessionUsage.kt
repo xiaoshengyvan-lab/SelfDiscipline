@@ -15,6 +15,11 @@ import com.selfdiscipline.app.data.AppSettings
  *  - 解锁（USER_PRESENT）：仅在未计时时开启新会话，避免部分机型反复广播导致清零
  *  - resumeIfNeeded：服务启动时同步当前屏幕状态，确保亮屏且未锁屏时立即开始计时
  *
+ * 提醒后的会话规则（需求）：
+ *  - 达到阈值提醒后「冻结」计时：本次会话不再累计使用时长
+ *  - 锁屏再解锁（新会话）后自动恢复计时并重新刷新为 0
+ *  - 新会话同时恢复提醒（清除“关闭本次提醒”与“稍后提醒”状态）
+ *
  * 使用 elapsedRealtime 计时，不查询 UsageStatsManager，不持有唤醒锁，几乎零耗电。
  * 状态持久化到 SharedPreferences，服务被杀后仍可恢复。
  */
@@ -23,9 +28,10 @@ object SessionUsage {
     /** 亮屏距上次息屏超过该值（毫秒）视为新会话 */
     private const val RESET_GAP_MS = 120_000L
 
-    /** 当前会话累计使用时长（毫秒） */
+    /** 当前会话累计使用时长（毫秒）；冻结后返回固定值，不再累加 */
     fun currentMs(context: Context): Long {
         val s = AppSettings(context)
+        if (s.sessionFrozen) return s.sessionAccumulatedMs
         val now = SystemClock.elapsedRealtime()
         val acc = s.sessionAccumulatedMs
         return if (s.sessionScreenOn) {
@@ -42,11 +48,12 @@ object SessionUsage {
         val now = SystemClock.elapsedRealtime()
         val gap = now - s.lastScreenOffElapsed
         if (s.lastScreenOffElapsed == 0L || gap >= RESET_GAP_MS) {
-            // 新会话：从头计时
-            s.sessionAccumulatedMs = 0L
+            // 新会话：从头计时并恢复提醒
+            startNewSession(s, now)
+        } else {
+            // 短暂亮屏则延续已累计的时长，从当前时刻继续计
+            s.sessionStartElapsed = now
         }
-        // 短暂亮屏则延续已累计的时长，从当前时刻继续计
-        s.sessionStartElapsed = now
         s.sessionScreenOn = true
     }
 
@@ -55,7 +62,10 @@ object SessionUsage {
         val s = AppSettings(context)
         if (!s.sessionScreenOn) return
         val now = SystemClock.elapsedRealtime()
-        s.sessionAccumulatedMs += (now - s.sessionStartElapsed).coerceAtLeast(0L)
+        if (!s.sessionFrozen) {
+            // 冻结后不再累计
+            s.sessionAccumulatedMs += (now - s.sessionStartElapsed).coerceAtLeast(0L)
+        }
         s.sessionStartElapsed = now
         s.sessionScreenOn = false
         s.lastScreenOffElapsed = now
@@ -69,16 +79,12 @@ object SessionUsage {
     fun onUserPresent(context: Context) {
         val s = AppSettings(context)
         if (s.sessionScreenOn) return
-        val now = SystemClock.elapsedRealtime()
-        s.sessionAccumulatedMs = 0L
-        s.sessionStartElapsed = now
-        s.sessionScreenOn = true
+        startNewSession(s, SystemClock.elapsedRealtime())
     }
 
     /**
      * 服务启动/应用回到前台时同步当前屏幕状态：
-     * 若屏幕亮着且未锁屏但未在计时，则立即开始新会话
-     * （解决“服务被杀后重启/升级后未经历一次息屏-亮屏周期，导致一直为 0”的问题）。
+     * 若屏幕亮着且未锁屏但未在计时，则立即开始新会话。
      */
     fun resumeIfNeeded(context: Context) {
         val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
@@ -88,9 +94,27 @@ object SessionUsage {
 
         val s = AppSettings(context)
         if (s.sessionScreenOn) return
-        val now = SystemClock.elapsedRealtime()
+        startNewSession(s, SystemClock.elapsedRealtime())
+    }
+
+    /** 提醒触发后冻结计时：本次会话不再累计（下次解锁自动恢复） */
+    fun freeze(context: Context) {
+        val s = AppSettings(context)
+        if (s.sessionScreenOn) {
+            val now = SystemClock.elapsedRealtime()
+            s.sessionAccumulatedMs += (now - s.sessionStartElapsed).coerceAtLeast(0L)
+            s.sessionStartElapsed = now
+        }
+        s.sessionFrozen = true
+    }
+
+    /** 开启新会话：清零时长、恢复计时与提醒 */
+    private fun startNewSession(s: AppSettings, now: Long) {
         s.sessionAccumulatedMs = 0L
         s.sessionStartElapsed = now
         s.sessionScreenOn = true
+        s.sessionFrozen = false
+        s.sessionMuted = false
+        s.snoozeUntilMs = 0L
     }
 }
