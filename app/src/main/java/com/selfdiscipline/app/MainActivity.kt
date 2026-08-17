@@ -108,9 +108,6 @@ class MainActivity : AppCompatActivity() {
         binding.fabAddTask.setOnClickListener {
             TaskEditActivity.start(this, null)
         }
-        binding.fabTaskList.setOnClickListener {
-            startActivity(Intent(this, TaskListActivity::class.java))
-        }
         binding.btnGrantPermission.setOnClickListener {
             UsageStatsHelper.openUsageAccessSettings(this)
         }

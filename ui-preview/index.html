@@ -118,8 +118,8 @@
   .task .op.del { color: #B3261E; }
 
   /* 圆形表盘 */
-  .dial { width: 230px; height: 230px; border-radius: 50%; background: var(--card); box-shadow: 0 2px 14px rgba(0,0,0,.08); position: relative; margin-top: 16px; }
-  .dial .ring { position: absolute; inset: 12px; border-radius: 50%; background: conic-gradient(var(--primary) 40%, var(--track) 0); }
+  .dial { width: 270px; height: 270px; border-radius: 50%; background: var(--card); box-shadow: 0 2px 14px rgba(0,0,0,.08); position: relative; margin-top: 16px; }
+  .dial .ring { position: absolute; inset: 16px; border-radius: 50%; background: conic-gradient(var(--primary) 40%, var(--track) 0); }
   .dial .hole { position: absolute; inset: 26px; border-radius: 50%; background: var(--card); }
   .dial-ticks span { position: absolute; background: #C9D6CA; }
   .t12 { top: 14px; left: 50%; width: 2px; height: 10px; transform: translateX(-50%); }
@@ -164,7 +164,7 @@
 <div class="phone screen" id="scr-home">
   <div class="statusbar"><span>9:41</span><span class="icons">▂▄▆ 📶 🔋</span></div>
   <div class="toolbar"><span class="title">自律助手</span><span class="gear">⚙️</span></div>
-  <div class="content" style="display:flex;flex-direction:column;align-items:center">
+  <div class="content" style="display:flex;flex-direction:column;align-items:center;justify-content:center">
 
     <div class="dial">
       <div class="ring"><div class="hole"></div></div>
@@ -180,9 +180,8 @@
 
     <div style="margin-top:20px;color:var(--text2);font-size:13px">今日已完成 1 · 待办 2</div>
   </div>
-  <div style="position:absolute;bottom:24px;left:0;right:0;display:flex;justify-content:center;gap:16px">
-    <div class="fab" style="position:static">+</div>
-    <div class="fab" style="position:static">☰</div>
+  <div style="position:absolute;bottom:24px;left:0;right:0;display:flex;justify-content:center">
+    <div class="fab" style="position:static;width:64px;height:64px;font-size:36px">+</div>
   </div>
 </div>
 <!-- ============ 设置 ============ -->
