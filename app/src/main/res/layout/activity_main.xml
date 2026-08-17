@@ -38,7 +38,7 @@
         android:paddingStart="20dp"
         android:paddingEnd="20dp">
 
-        <!-- 核心圆形表盘（触碰仅限圆内） -->
+        <!-- 核心圆形表盘（触碰与反馈均仅限圆内） -->
         <com.selfdiscipline.app.view.CircularTouchLayout
             android:id="@+id/dialContainer"
             android:layout_width="280dp"
@@ -46,7 +46,7 @@
             android:background="@drawable/bg_dial"
             android:clickable="true"
             android:focusable="true"
-            android:foreground="?attr/selectableItemBackgroundBorderless">
+            android:foreground="@drawable/ripple_circle">
 
             <com.google.android.material.progressindicator.CircularProgressIndicator
                 android:id="@+id/ringProgress"
