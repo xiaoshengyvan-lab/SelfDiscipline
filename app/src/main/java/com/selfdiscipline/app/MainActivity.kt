@@ -1,7 +1,10 @@
 package com.selfdiscipline.app
 
 import android.Manifest
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -18,6 +21,7 @@ import com.selfdiscipline.app.data.TaskRepository
 import com.selfdiscipline.app.databinding.ActivityMainBinding
 import com.selfdiscipline.app.service.DailyScheduler
 import com.selfdiscipline.app.service.ReminderNotifier
+import com.selfdiscipline.app.service.SessionUsage
 import com.selfdiscipline.app.service.UsageMonitorService
 import com.selfdiscipline.app.service.UsageStatsHelper
 import com.selfdiscipline.app.settings.SettingsActivity
@@ -32,9 +36,10 @@ import kotlinx.coroutines.launch
 /**
  * 首页（专注表盘页）：
  *  - 核心圆形表盘：点击开始/暂停/继续专注，长按标记完成
- *  - 表盘内部：待办名称 / 倒计时 / 状态提示；圆环进度随专注时长增长
+ *  - 表盘内部：待办名称 / 倒计时 / 状态提示
+ *  - 圆环进度 = 手机使用时长进度（本次解锁已用 / 阈值），不是倒计时进度
  *  - 权限提示条（仅未授权时显示）、今日统计
- *  - 底部：＋ 新增待办 / ☰ 待办清单
+ *  - 底部：＋ 新增待办
  */
 class MainActivity : AppCompatActivity() {
 
@@ -62,6 +67,14 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+    /** 接收后台服务广播的实时会话使用时长，驱动圆环进度 */
+    private val usageReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val usage = intent?.getLongExtra(UsageMonitorService.EXTRA_USAGE_MILLIS, -1L) ?: -1L
+            if (usage >= 0) updateRingUsage(usage)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -71,6 +84,21 @@ class MainActivity : AppCompatActivity() {
         setupActions()
         setupDial()
         observeTasks()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        ContextCompat.registerReceiver(
+            this,
+            usageReceiver,
+            IntentFilter(UsageMonitorService.ACTION_UPDATE),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+    }
+
+    override fun onStop() {
+        super.onStop()
+        unregisterReceiver(usageReceiver)
     }
 
     override fun onResume() {
@@ -83,6 +111,7 @@ class MainActivity : AppCompatActivity() {
             DailyScheduler.checkDaily(this@MainActivity, repository)
         }
         refreshFocusState()
+        updateRingUsage()
     }
 
     override fun onDestroy() {
@@ -247,19 +276,15 @@ class MainActivity : AppCompatActivity() {
         val task = currentTask ?: nextTask
         binding.tvDialTask.text = task?.title ?: "暂无待办"
 
-        val totalMs = (currentTask?.durationMinutes ?: nextTask?.durationMinutes ?: 30) * 60_000L
-
         when (mode) {
             MODE_COUNTING -> {
                 val remain = (deadlineAt - SystemClock.elapsedRealtime()).coerceAtLeast(0L)
                 binding.tvDialCountdown.text = TimeFormat.formatCountdown(remain)
                 binding.tvDialHint.text = "点击暂停"
-                setRingProgress(totalMs, remain)
             }
             MODE_PAUSED -> {
                 binding.tvDialCountdown.text = TimeFormat.formatCountdown(remainingMs)
                 binding.tvDialHint.text = "点击继续"
-                setRingProgress(totalMs, remainingMs)
             }
             else -> {
                 // 未开始：不显示倒计时，只显示提示
@@ -267,16 +292,18 @@ class MainActivity : AppCompatActivity() {
                 binding.tvDialCountdown.textSize = if (task == null) 20f else 24f
                 binding.tvDialHint.text =
                     if (task == null) "点击下方 + 添加任务" else "点击表盘开始 / 暂停"
-                setRingProgress(totalMs, totalMs) // 进度 0
             }
         }
+        updateRingUsage()
     }
 
-    private fun setRingProgress(totalMs: Long, remainMs: Long) {
-        val percent = if (totalMs > 0) {
-            ((totalMs - remainMs).coerceIn(0L, totalMs) * 100 / totalMs).toInt()
-        } else 0
-        binding.ringProgress.setProgressCompat(percent, true)
+    /** 圆环进度 = 手机使用时长进度（本次解锁已用 / 阈值），与倒计时无关 */
+    private fun updateRingUsage(usageMillis: Long = SessionUsage.currentMs(this)) {
+        val threshold = settings.dailyThresholdMinutes * 60_000L
+        val percent = if (threshold > 0) {
+            (usageMillis.toFloat() / threshold).coerceIn(0f, 1f) * 100
+        } else 0f
+        binding.ringProgress.setProgressCompat(percent.toInt(), true)
     }
 
     // ---------- 任务 ----------
