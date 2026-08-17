@@ -24,16 +24,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="今日已使用手机 0分钟"
+            android:text="本次解锁已使用 0分钟"
             android:textAppearance="?attr/textAppearanceTitleMedium" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="你已经使用手机很久了，是时候去做更重要的事了"
-            android:textAppearance="?attr/textAppearanceBodyMedium"
-            android:textColor="?android:attr/textColorSecondary" />
 
         <!-- 建议任务卡片 -->
         <com.google.android.material.card.MaterialCardView

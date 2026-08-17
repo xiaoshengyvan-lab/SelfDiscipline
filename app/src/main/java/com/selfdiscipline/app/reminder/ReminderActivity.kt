@@ -21,7 +21,7 @@ import kotlinx.coroutines.launch
 
 /**
  * 自律提醒页（全屏弹出）：
- *  - 显示今日已使用时长
+ *  - 显示本次解锁已使用时长
  *  - 显示“该去做什么”：自动推荐下一个最优先的未完成任务
  *  - 支持「开始专注」倒计时（时长 = 任务设置的预计时长）
  *  - 支持「完成」「换一个任务」「稍后再说」
@@ -83,7 +83,7 @@ class ReminderActivity : AppCompatActivity() {
     }
 
     private fun showUsageText(usageMillis: Long) {
-        binding.tvRemindUsage.text = "今日已使用手机 ${TimeFormat.formatDuration(usageMillis)}"
+        binding.tvRemindUsage.text = "本次解锁已使用 ${TimeFormat.formatDuration(usageMillis)}"
     }
 
     private fun setupButtons() {

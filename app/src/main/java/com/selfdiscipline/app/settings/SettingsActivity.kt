@@ -10,20 +10,25 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.selfdiscipline.app.data.AppSettings
 import com.selfdiscipline.app.databinding.ActivitySettingsBinding
+import com.selfdiscipline.app.reminder.ReminderActivity
+import com.selfdiscipline.app.service.UsageMonitorService
 import com.selfdiscipline.app.service.UsageStatsHelper
+import com.selfdiscipline.app.task.TaskListActivity
 import com.selfdiscipline.app.util.DeviceCompat
 
 /**
- * 提醒设置：
- *  - 每日使用时长阈值（分钟）：使用达到该时长后提醒
- *  - 提醒最小间隔（分钟）：避免频繁打扰
- *  - 是否忽略本应用自身使用时间
- *  - 使用情况访问权限、电池优化引导
+ * 设置页：
+ *  - 自律提醒开关（开启/关闭）
+ *  - 提醒设置：使用时长阈值、提醒间隔
+ *  - 我的任务清单入口
+ *  - 模拟触发自律提醒（测试）入口
+ *  - 权限引导（仅未授权时显示）、电池优化、系统适配（仅小米系）
  */
 class SettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivitySettingsBinding
     private val settings by lazy { AppSettings(this) }
+    private var updatingSwitch = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,41 +39,73 @@ class SettingsActivity : AppCompatActivity() {
 
         binding.etThreshold.setText(settings.dailyThresholdMinutes.toString())
         binding.etInterval.setText(settings.remindIntervalMinutes.toString())
-        binding.switchExcludeSelf.isChecked = settings.excludeSelf
 
-        binding.btnSave.setOnClickListener { save() }
-        binding.btnGrantPermission.setOnClickListener {
-            UsageStatsHelper.openUsageAccessSettings(this)
-        }
-        binding.btnBattery.setOnClickListener { requestIgnoreBatteryOptimization() }
-
-        updatePermissionUi()
+        setupSwitch()
+        setupEntries()
+        updatePermissionBanner()
         updateBatteryUi()
         setupDeviceCompat()
     }
 
-    /**
-     * 系统适配卡片：仅小米系（MIUI / HyperOS）设备显示，
-     * 提供自启动、后台弹出界面、省电策略等专属权限页跳转。
-     */
-    private fun setupDeviceCompat() {
-        if (!DeviceCompat.isXiaomiDevice()) {
-            binding.cardDeviceCompat.visibility = View.GONE
-            return
-        }
-        binding.cardDeviceCompat.visibility = View.VISIBLE
-        binding.tvDeviceCompatStatus.text =
-            "检测到 ${DeviceCompat.deviceName()} 系统。" +
-                "为保证后台监控与提醒正常，请依次完成：自启动 → 后台弹出界面 → 省电策略（无限制）"
-        binding.btnAutoStart.setOnClickListener { DeviceCompat.openAutoStartSettings(this) }
-        binding.btnPermEditor.setOnClickListener { DeviceCompat.openPermissionEditor(this) }
-        binding.btnAppDetails.setOnClickListener { DeviceCompat.openAppDetails(this) }
-    }
-
     override fun onResume() {
         super.onResume()
-        updatePermissionUi()
+        updatePermissionBanner()
         updateBatteryUi()
+        syncSwitchState()
+    }
+
+    // ---------- 自律开关 ----------
+
+    private fun setupSwitch() {
+        binding.switchMonitor.setOnCheckedChangeListener { _, checked ->
+            if (updatingSwitch) return@setOnCheckedChangeListener
+            if (checked) enableMonitoring() else disableMonitoring()
+        }
+    }
+
+    private fun syncSwitchState() {
+        updatingSwitch = true
+        binding.switchMonitor.isChecked = settings.monitoringEnabled
+        updatingSwitch = false
+    }
+
+    private fun enableMonitoring() {
+        if (!UsageStatsHelper.hasUsageAccess(this)) {
+            Toast.makeText(this, "请先授予「使用情况访问」权限", Toast.LENGTH_SHORT).show()
+            UsageStatsHelper.openUsageAccessSettings(this)
+            syncSwitchState()
+            return
+        }
+        settings.monitoringEnabled = true
+        UsageMonitorService.start(this)
+        Toast.makeText(this, "自律监控已开启", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun disableMonitoring() {
+        settings.monitoringEnabled = false
+        stopService(Intent(this, UsageMonitorService::class.java))
+        Toast.makeText(this, "自律监控已关闭", Toast.LENGTH_SHORT).show()
+    }
+
+    // ---------- 入口 ----------
+
+    private fun setupEntries() {
+        binding.cardTaskList.setOnClickListener {
+            startActivity(Intent(this, TaskListActivity::class.java))
+        }
+        binding.cardTestReminder.setOnClickListener {
+            val testUsage = settings.dailyThresholdMinutes * 60_000L
+            startActivity(
+                Intent(this, ReminderActivity::class.java)
+                    .putExtra(ReminderActivity.EXTRA_USAGE, testUsage)
+                    .putExtra(ReminderActivity.EXTRA_TASK_ID, -1L)
+            )
+        }
+        binding.btnGrantPermission.setOnClickListener {
+            UsageStatsHelper.openUsageAccessSettings(this)
+        }
+        binding.btnBattery.setOnClickListener { requestIgnoreBatteryOptimization() }
+        binding.btnSave.setOnClickListener { save() }
     }
 
     private fun save() {
@@ -76,26 +113,36 @@ class SettingsActivity : AppCompatActivity() {
         val interval = binding.etInterval.text?.toString()?.toIntOrNull() ?: 30
         settings.dailyThresholdMinutes = threshold
         settings.remindIntervalMinutes = interval
-        settings.excludeSelf = binding.switchExcludeSelf.isChecked
         Toast.makeText(this, "设置已保存", Toast.LENGTH_SHORT).show()
-        finish()
     }
 
-    private fun updatePermissionUi() {
+    // ---------- 权限 / 电池 / 系统适配 ----------
+
+    private fun updatePermissionBanner() {
         val granted = UsageStatsHelper.hasUsageAccess(this)
-        binding.tvPermissionStatus.text =
-            if (granted) "✅ 已授予：可以检测手机使用时长"
-            else "⚠️ 未授予：无法检测手机使用时长"
-        binding.btnGrantPermission.visibility = if (granted) View.GONE else View.VISIBLE
+        // 仅未授权时显示
+        binding.cardPermission.visibility = if (granted) View.GONE else View.VISIBLE
     }
 
     private fun updateBatteryUi() {
         val pm = getSystemService(POWER_SERVICE) as PowerManager
         val ignoring = pm.isIgnoringBatteryOptimizations(packageName)
         binding.tvBatteryStatus.text =
-            if (ignoring) "✅ 已允许：后台监控更稳定"
-            else "⚠️ 未允许：系统可能限制后台监控，建议开启"
+            if (ignoring) "已允许 · 后台更稳定" else "未允许 · 建议开启"
         binding.btnBattery.visibility = if (ignoring) View.GONE else View.VISIBLE
+    }
+
+    private fun setupDeviceCompat() {
+        if (!DeviceCompat.isXiaomiDevice()) {
+            binding.cardDeviceCompat.visibility = View.GONE
+            return
+        }
+        binding.cardDeviceCompat.visibility = View.VISIBLE
+        binding.tvDeviceCompatStatus.text =
+            "检测到 ${DeviceCompat.deviceName()}，建议完成：自启动 → 后台弹出界面 → 省电策略"
+        binding.btnAutoStart.setOnClickListener { DeviceCompat.openAutoStartSettings(this) }
+        binding.btnPermEditor.setOnClickListener { DeviceCompat.openPermissionEditor(this) }
+        binding.btnAppDetails.setOnClickListener { DeviceCompat.openAppDetails(this) }
     }
 
     private fun requestIgnoreBatteryOptimization() {

@@ -44,11 +44,11 @@ object ReminderNotifier {
             "自律提醒：放下手机休息一下吧"
         }
         val text = if (task != null) {
-            "今日已使用手机 ${TimeFormat.formatDuration(usageMillis)}，" +
+            "本次解锁已使用 ${TimeFormat.formatDuration(usageMillis)}，" +
                 "建议完成「${task.title}」（约 ${task.durationMinutes} 分钟）"
         } else {
-            "今日已使用手机 ${TimeFormat.formatDuration(usageMillis)}，" +
-                "去休息一下，做点别的事情吧（可在任务清单中添加待办）"
+            "本次解锁已使用 ${TimeFormat.formatDuration(usageMillis)}，" +
+                "去休息一下，做点别的事情吧"
         }
 
         val notification = NotificationCompat.Builder(context, CHANNEL_REMINDER)
@@ -80,7 +80,7 @@ object ReminderNotifier {
                 "自律提醒",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "手机使用时长超限时弹出的自律提醒"
+                description = "使用时长超限时弹出的自律提醒"
             }
             nm.createNotificationChannel(channel)
         }

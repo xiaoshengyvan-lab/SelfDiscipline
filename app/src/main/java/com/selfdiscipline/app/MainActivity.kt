@@ -13,36 +13,43 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import com.selfdiscipline.app.data.AppSettings
+import com.selfdiscipline.app.data.Task
+import com.selfdiscipline.app.data.TaskRepository
 import com.selfdiscipline.app.databinding.ActivityMainBinding
 import com.selfdiscipline.app.reminder.ReminderActivity
+import com.selfdiscipline.app.service.SessionUsage
 import com.selfdiscipline.app.service.UsageMonitorService
 import com.selfdiscipline.app.service.UsageStatsHelper
 import com.selfdiscipline.app.settings.SettingsActivity
 import com.selfdiscipline.app.task.TaskListActivity
 import com.selfdiscipline.app.util.TimeFormat
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 /**
- * 主界面：
- *  - 自律提醒开关（可开启/关闭）
- *  - 今日使用时长实时展示 + 进度
- *  - 使用情况访问权限引导
- *  - 任务清单 / 提醒设置入口
+ * 主页：
+ *  - 本次解锁使用时长 + 阈值进度
+ *  - 下一步要做的任务 + 预计时长（可一键开始专注）
+ *  - 快速添加待办（待办提醒）
+ *  - 未授权时才显示权限引导（授权后自动隐藏）
+ *  - 右上角进入设置页（自律开关、提醒设置、任务清单、模拟提醒等）
  */
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val settings by lazy { AppSettings(this) }
-    private var updatingSwitch = false
+    private val repository by lazy { TaskRepository.get(this) }
 
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (!granted) {
-                Toast.makeText(this, "未授予通知权限，自律提醒将无法弹出", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "通知权限未授予，提醒可能无法弹出", Toast.LENGTH_LONG).show()
             }
         }
 
-    /** 接收后台服务广播的实时使用时长 */
+    /** 接收后台服务广播的实时会话使用时长 */
     private val usageReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             val usage = intent?.getLongExtra(UsageMonitorService.EXTRA_USAGE_MILLIS, -1L) ?: -1L
@@ -56,9 +63,10 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         requestNotificationPermissionIfNeeded()
-        setupSwitch()
-        setupCards()
-        updatePermissionUi()
+        setupToolbar()
+        setupQuickAdd()
+        setupPermissionBanner()
+        observeTasks()
     }
 
     override fun onStart() {
@@ -78,20 +86,11 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        syncSwitchState()
-        updatePermissionUi()
-        // 开关为开且已授权时，确保后台监控在运行（含从授权页返回的场景）
-        if (binding.switchMonitor.isChecked && UsageStatsHelper.hasUsageAccess(this)) {
-            if (!settings.monitoringEnabled) {
-                settings.monitoringEnabled = true
-                UsageMonitorService.start(this)
-                Toast.makeText(this, "自律监控已开启", Toast.LENGTH_SHORT).show()
-            }
-        }
-        refreshUsage()
+        updatePermissionBanner()
+        showUsage(SessionUsage.currentMs(this))
     }
 
-    // ---------- 权限 ----------
+    // ---------- 初始化 ----------
 
     private fun requestNotificationPermissionIfNeeded() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -102,77 +101,76 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun updatePermissionUi() {
-        val granted = UsageStatsHelper.hasUsageAccess(this)
-        binding.tvPermissionStatus.text =
-            if (granted) "✅ 已授予：可以检测手机使用时长"
-            else "⚠️ 未授予：无法检测手机使用时长"
-        binding.btnGrantPermission.visibility = if (granted) View.GONE else View.VISIBLE
-    }
-
-    // ---------- 开关 ----------
-
-    private fun setupSwitch() {
-        binding.switchMonitor.setOnCheckedChangeListener { _, checked ->
-            if (updatingSwitch) return@setOnCheckedChangeListener
-            if (checked) enableMonitoring() else disableMonitoring()
-        }
-    }
-
-    private fun syncSwitchState() {
-        updatingSwitch = true
-        binding.switchMonitor.isChecked = settings.monitoringEnabled
-        updatingSwitch = false
-    }
-
-    private fun enableMonitoring() {
-        if (!UsageStatsHelper.hasUsageAccess(this)) {
-            Toast.makeText(this, "请先授予「使用情况访问」权限", Toast.LENGTH_SHORT).show()
-            UsageStatsHelper.openUsageAccessSettings(this)
-            return
-        }
-        settings.monitoringEnabled = true
-        UsageMonitorService.start(this)
-        Toast.makeText(this, "自律监控已开启", Toast.LENGTH_SHORT).show()
-    }
-
-    private fun disableMonitoring() {
-        settings.monitoringEnabled = false
-        stopService(Intent(this, UsageMonitorService::class.java))
-        Toast.makeText(this, "自律监控已关闭", Toast.LENGTH_SHORT).show()
-    }
-
-    // ---------- 界面 ----------
-
-    private fun setupCards() {
-        binding.cardTasks.setOnClickListener {
-            startActivity(Intent(this, TaskListActivity::class.java))
-        }
-        binding.cardSettings.setOnClickListener {
+    private fun setupToolbar() {
+        binding.btnSettings.setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
-        // 测试入口：直接弹出自律提醒，方便快速验证提醒效果
-        binding.cardTestReminder.setOnClickListener {
-            val testUsage = settings.dailyThresholdMinutes * 60_000L
-            startActivity(
-                Intent(this, ReminderActivity::class.java)
-                    .putExtra(ReminderActivity.EXTRA_USAGE, testUsage)
-                    .putExtra(ReminderActivity.EXTRA_TASK_ID, -1L)
-            )
+    }
+
+    private fun setupQuickAdd() {
+        binding.btnAddTodo.setOnClickListener {
+            val title = binding.etQuickTodo.text?.toString()?.trim().orEmpty()
+            if (title.isEmpty()) {
+                Toast.makeText(this, "先输入要做的事", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            lifecycleScope.launch {
+                repository.add(title, 30, 0)
+                binding.etQuickTodo.text?.clear()
+                Toast.makeText(this@MainActivity, "已加入待办", Toast.LENGTH_SHORT).show()
+            }
         }
+        binding.btnGoAddTask.setOnClickListener {
+            startActivity(Intent(this, TaskListActivity::class.java))
+        }
+    }
+
+    private fun setupPermissionBanner() {
         binding.btnGrantPermission.setOnClickListener {
             UsageStatsHelper.openUsageAccessSettings(this)
         }
     }
 
-    private fun refreshUsage() {
-        if (UsageStatsHelper.hasUsageAccess(this)) {
-            val usage = UsageStatsHelper.getTodayUsageMillis(this, settings.excludeSelf)
-            showUsage(usage)
-        } else {
-            showUsage(0L)
+    private fun updatePermissionBanner() {
+        val granted = UsageStatsHelper.hasUsageAccess(this)
+        // 仅未授权时显示，授权成功后自动隐藏
+        binding.cardPermission.visibility = if (granted) View.GONE else View.VISIBLE
+    }
+
+    // ---------- 任务 ----------
+
+    private fun observeTasks() {
+        lifecycleScope.launch {
+            repository.allTasks.collectLatest { tasks ->
+                val pending = tasks.filter { !it.done }
+                val next = pending.firstOrNull()
+                binding.tvPendingCount.text =
+                    if (pending.isEmpty()) "暂无待办任务" else "还有 ${pending.size} 个待办未完成"
+                if (next != null) {
+                    binding.cardNextTask.visibility = View.VISIBLE
+                    binding.cardNoTask.visibility = View.GONE
+                    showNextTask(next)
+                } else {
+                    binding.cardNextTask.visibility = View.GONE
+                    binding.cardNoTask.visibility = View.VISIBLE
+                }
+            }
         }
     }
+
+    private fun showNextTask(task: Task) {
+        binding.tvNextTitle.text = task.title
+        binding.tvNextMeta.text = "预计 ${task.durationMinutes} 分钟"
+        binding.btnStartFocus.setOnClickListener {
+            startActivity(
+                Intent(this, ReminderActivity::class.java)
+                    .putExtra(ReminderActivity.EXTRA_USAGE, SessionUsage.currentMs(this))
+                    .putExtra(ReminderActivity.EXTRA_TASK_ID, task.id)
+            )
+        }
+    }
+
+    // ---------- 使用时长 ----------
 
     private fun showUsage(usageMillis: Long) {
         binding.tvUsage.text = TimeFormat.formatDuration(usageMillis)
@@ -182,9 +180,9 @@ class MainActivity : AppCompatActivity() {
         binding.progressUsage.progress = (progress * 100).toInt()
 
         binding.tvUsageHint.text = if (usageMillis >= threshold) {
-            "已达到提醒阈值（${settings.dailyThresholdMinutes} 分钟），该放下手机啦！"
+            "已达阈值 ${settings.dailyThresholdMinutes} 分钟"
         } else {
-            "提醒阈值 ${settings.dailyThresholdMinutes} 分钟，还差 ${TimeFormat.formatDuration(threshold - usageMillis)}"
+            "距提醒还差 ${TimeFormat.formatDuration(threshold - usageMillis)}"
         }
     }
 }

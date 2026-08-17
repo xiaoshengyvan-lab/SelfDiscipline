@@ -3,25 +3,24 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>自律助手 · UI 预览</title>
+<title>自律助手 · UI 预览（v2）</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   :root {
     --primary: #2E7D32;
     --primary-container: #A5D6A7;
     --on-primary-container: #1B5E20;
-    --surface: #F4F6F4;
-    --card: #FFFFFF;
+    --surface: #FFFFFF;
     --text: #1B1B1F;
-    --text2: #6B6B70;
-    --error: #B3261E;
+    --text2: #8A8A8E;
     --tonal: #E4F0E4;
-    --track: #E4E4E9;
-    --outline: #79747E;
+    --track: #F4F4F5;
+    --stroke: #EEEFF0;
+    --warn-bg: #FFF8E1;
   }
   html, body { height: 100%; }
   body {
-    background: #14181d;
+    background: #E8EAED;
     font-family: 'Segoe UI', system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
     display: flex; justify-content: center; align-items: flex-start;
     padding: 28px 24px; min-height: 100vh;
@@ -37,77 +36,88 @@
   }
   #switcher button.active { background: var(--primary); color: #fff; font-weight: 600; }
   body.single #switcher { display: none; }
-  .hint { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); color: #8a929b; font-size: 12px; z-index: 60; }
+  .hint { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); color: #6b7075; font-size: 12px; z-index: 60; background: rgba(255,255,255,.85); padding: 4px 12px; border-radius: 12px; }
   body.single .hint { display: none; }
 
   .phone {
     width: 360px; min-height: 780px; background: var(--surface);
-    border-radius: 44px; border: 9px solid #000; box-shadow: 0 30px 70px rgba(0,0,0,.6);
+    border-radius: 44px; border: 9px solid #000; box-shadow: 0 30px 70px rgba(0,0,0,.5);
     overflow: hidden; position: relative; display: flex; flex-direction: column;
   }
   .statusbar {
     height: 40px; display: flex; justify-content: space-between; align-items: center;
-    padding: 0 26px; font-size: 14px; font-weight: 600; color: var(--text); flex: none;
+    padding: 0 26px; font-size: 14px; font-weight: 600; color: var(--text); flex: none; background: var(--surface);
   }
   .statusbar .icons { font-size: 13px; letter-spacing: 2px; }
-  .content { flex: 1; overflow-y: auto; padding: 12px 16px 20px; }
+  .content { flex: 1; overflow-y: auto; padding: 8px 16px 20px; }
   .content::-webkit-scrollbar { width: 0; }
 
   /* 工具栏 */
-  .toolbar { height: 56px; display: flex; align-items: center; padding: 0 8px; gap: 2px; flex: none; }
+  .toolbar { height: 56px; display: flex; align-items: center; padding: 0 8px; gap: 2px; flex: none; background: var(--surface); }
   .toolbar .back { font-size: 24px; padding: 8px 12px; color: var(--text); cursor: pointer; }
-  .toolbar .title { font-size: 20px; font-weight: 600; color: var(--text); }
+  .toolbar .title { font-size: 20px; font-weight: 600; color: var(--text); flex: 1; }
+  .toolbar .gear { font-size: 20px; padding: 8px 14px; color: var(--text); cursor: pointer; }
 
-  /* 文本 */
-  .title { font-size: 26px; font-weight: 700; color: var(--text); }
-  .subtitle { font-size: 14px; color: var(--text2); margin-top: 4px; }
+  .label { font-size: 13px; color: var(--text2); font-weight: 500; }
+  .value-big { font-size: 34px; font-weight: 700; color: var(--primary); margin-top: 6px; }
   .card {
-    background: var(--card); border-radius: 16px; padding: 18px; margin-top: 12px;
-    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    background: var(--surface); border-radius: 20px; padding: 20px; margin-top: 12px;
+    border: 1px solid var(--stroke);
   }
-  .card .c-title { font-size: 16px; font-weight: 600; color: var(--text); }
-  .card .c-sub { font-size: 12.5px; color: var(--text2); margin-top: 3px; line-height: 1.5; }
+  .card-title { font-size: 16px; font-weight: 700; color: var(--text); }
   .row { display: flex; align-items: center; gap: 10px; }
   .grow { flex: 1; }
-  .value-big { font-size: 34px; font-weight: 700; color: var(--primary); margin-top: 8px; }
-  .progress { height: 8px; background: var(--track); border-radius: 4px; overflow: hidden; margin-top: 12px; }
+  .progress { height: 8px; background: var(--track); border-radius: 4px; overflow: hidden; margin-top: 14px; }
   .progress > i { display: block; height: 100%; background: var(--primary); border-radius: 4px; }
   .hint { font-size: 12.5px; color: var(--text2); margin-top: 8px; }
 
   /* 开关 */
   .switch { position: relative; width: 52px; height: 32px; border-radius: 18px; background: var(--primary); flex: none; transition: background .2s; }
-  .switch::after { content: ''; position: absolute; top: 2px; left: 22px; width: 28px; height: 28px; border-radius: 50%; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,.3); }
+  .switch::after { content: ''; position: absolute; top: 2px; left: 22px; width: 28px; height: 28px; border-radius: 50%; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,.25); }
   .switch.off { background: #B9B9BE; }
   .switch.off::after { left: 2px; }
 
   /* 按钮 */
-  .btn { border: none; border-radius: 24px; padding: 12px 22px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .btn { border: none; border-radius: 22px; padding: 11px 20px; font-size: 14.5px; font-weight: 600; cursor: pointer; font-family: inherit; }
   .btn-primary { background: var(--primary); color: #fff; }
   .btn-tonal { background: var(--tonal); color: var(--primary); }
   .btn-text { background: transparent; color: var(--primary); }
   .btn-block { width: 100%; }
 
-  /* 输入框（Outlined） */
-  .outline { position: relative; border: 1.5px solid var(--outline); border-radius: 8px; padding: 12px 14px 10px; margin-top: 14px; background: transparent; }
-  .outline .olabel { position: absolute; top: -9px; left: 12px; background: var(--surface); padding: 0 5px; font-size: 11.5px; color: #49454F; }
-  .outline .ovalue { font-size: 15px; color: var(--text); }
+  /* 输入框 */
+  .outline { position: relative; border: 1.5px solid #C9C9CE; border-radius: 8px; padding: 11px 12px 9px; background: transparent; }
+  .outline .olabel { position: absolute; top: -8px; left: 10px; background: var(--surface); padding: 0 5px; font-size: 11px; color: var(--text2); }
+  .outline .ovalue { font-size: 14.5px; color: var(--text); }
+  .quick-row { display: flex; gap: 10px; align-items: center; margin-top: 12px; }
+  .quick-row .outline { flex: 1; margin-top: 0; }
+
+  /* 横幅（未授权时显示） */
+  .banner {
+    background: var(--warn-bg); border-radius: 14px; padding: 12px 14px; margin-top: 12px;
+    display: flex; align-items: center; gap: 8px; font-size: 14px;
+  }
+  .banner .btn { margin-left: auto; }
+
+  .entry { display: flex; align-items: center; padding: 18px 20px; border: 1px solid var(--stroke); border-radius: 20px; margin-top: 12px; cursor: pointer; }
+  .entry .t { flex: 1; font-size: 15.5px; font-weight: 600; }
+  .entry .a { color: var(--text2); font-size: 20px; }
 
   /* 任务项 */
-  .task { background: var(--card); border-radius: 14px; padding: 13px 14px; display: flex; align-items: center; gap: 10px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
-  .check { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #8B8B90; flex: none; position: relative; }
+  .task { border: 1px solid var(--stroke); border-radius: 14px; padding: 13px 14px; display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .check { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #B9B9BE; flex: none; position: relative; }
   .check.on { background: var(--primary); border-color: var(--primary); }
   .check.on::after { content: '✓'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 14px; font-weight: 700; }
   .task .t-title { font-size: 15.5px; font-weight: 600; color: var(--text); }
   .task .t-title.done { text-decoration: line-through; color: var(--text2); }
   .task .t-meta { font-size: 12px; color: var(--text2); margin-top: 2px; }
   .task .op { color: var(--primary); font-size: 13.5px; padding: 4px 6px; }
-  .task .op.del { color: var(--error); }
+  .task .op.del { color: #B3261E; }
 
   .fab {
     position: absolute; right: 20px; bottom: 24px; width: 56px; height: 56px; border-radius: 18px;
     background: var(--primary-container); color: var(--on-primary-container); font-size: 32px;
     display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 6px 14px rgba(0,0,0,.28); z-index: 20;
+    box-shadow: 0 6px 14px rgba(0,0,0,.22); z-index: 20;
   }
 
   /* 提醒页 */
@@ -119,63 +129,90 @@
   .tag { font-size: 12.5px; color: var(--primary); font-weight: 600; }
   .mt8 { margin-top: 8px; } .mt12 { margin-top: 12px; } .mt16 { margin-top: 16px; } .mt24 { margin-top: 24px; }
 
-  /* 截图模式：去掉投影留白，铺满 */
   body.single .phone { box-shadow: none; border-radius: 0; min-height: 100vh; }
-  body.single { padding: 0; }
+  body.single { padding: 0; background: var(--surface); }
 </style>
 </head>
 <body>
 <div id="switcher">
-  <button data-s="main" class="active">主界面</button>
+  <button data-s="home" class="active">主页</button>
+  <button data-s="settings">设置</button>
   <button data-s="tasks">任务清单</button>
   <button data-s="edit">添加任务</button>
-  <button data-s="settings">提醒设置</button>
-  <button data-s="reminder">自律提醒页</button>
+  <button data-s="reminder">提醒页</button>
 </div>
-<div class="hint">浏览器中点击上方按钮可切换查看各页面（本项目为静态 UI 预览，非可运行 APK）</div>
+<div class="hint">浏览器中点击按钮切换页面（静态 UI 预览，白色主题 v2）</div>
 
-<!-- ============ 主界面 ============ -->
-<div class="phone screen" id="scr-main">
+<!-- ============ 主页 ============ -->
+<div class="phone screen" id="scr-home">
   <div class="statusbar"><span>9:41</span><span class="icons">▂▄▆ 📶 🔋</span></div>
+  <div class="toolbar"><span class="title">自律助手</span><span class="gear">⚙️</span></div>
   <div class="content">
-    <div class="title">自律助手</div>
-    <div class="subtitle">管理手机使用时间，做时间的主人</div>
 
     <div class="card">
-      <div class="c-title">📱 今日使用时长</div>
-      <div class="value-big">2小时15分钟</div>
-      <div class="progress"><i style="width:100%"></i></div>
-      <div class="hint">已达到提醒阈值（60 分钟），该放下手机啦！</div>
+      <div class="label">本次解锁使用</div>
+      <div class="value-big">45分钟</div>
+      <div class="progress"><i style="width:75%"></i></div>
+      <div class="hint">距提醒还差 15分钟</div>
     </div>
 
     <div class="card">
-      <div class="row">
-        <div class="grow">
-          <div class="c-title">⏰ 自律提醒开关</div>
-          <div class="c-sub">开启后将在后台监控使用时长，超限时弹出自律提醒</div>
-        </div>
-        <div class="switch"></div>
+      <div class="label">下一步要做</div>
+      <div style="font-size:21px;font-weight:700;color:var(--text);margin-top:6px">背英语单词</div>
+      <div class="hint" style="margin-top:2px">预计 30 分钟</div>
+      <button class="btn btn-primary btn-block mt12">开始专注</button>
+    </div>
+
+    <div class="card">
+      <div class="label">快速添加待办</div>
+      <div class="quick-row">
+        <div class="outline"><span class="olabel">要做什么…</span><div class="ovalue">&nbsp;</div></div>
+        <button class="btn btn-primary">添加</button>
+      </div>
+      <div class="hint">还有 2 个待办未完成</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 设置 ============ -->
+<div class="phone screen" id="scr-settings" style="display:none">
+  <div class="statusbar"><span>9:41</span><span class="icons">▂▄▆ 📶 🔋</span></div>
+  <div class="toolbar"><span class="back">←</span><span class="title">设置</span></div>
+  <div class="content">
+
+    <div class="card row">
+      <div class="grow card-title">自律提醒</div>
+      <div class="switch"></div>
+    </div>
+
+    <div class="card">
+      <div class="label">提醒设置</div>
+      <div class="outline mt12"><span class="olabel">使用时长阈值（分钟）</span><div class="ovalue">60</div></div>
+      <div class="outline mt12"><span class="olabel">提醒间隔（分钟）</span><div class="ovalue">30</div></div>
+      <button class="btn btn-tonal mt12">保存</button>
+    </div>
+
+    <div class="entry"><span class="t">我的任务清单</span><span class="a">›</span></div>
+    <div class="entry"><span class="t">模拟触发提醒</span><span class="a">›</span></div>
+
+    <!-- 仅未授权时显示 -->
+    <div class="banner"><span>需要使用情况访问权限</span><button class="btn btn-text">去授权</button></div>
+
+    <div class="entry" style="padding:14px 20px">
+      <div class="grow">
+        <div class="t" style="font-size:15px">电池优化</div>
+        <div class="hint" style="margin-top:2px">已允许 · 后台更稳定</div>
       </div>
     </div>
 
     <div class="card">
-      <div class="c-title">🔒 使用情况访问权限</div>
-      <div class="c-sub">✅ 已授予：可以检测手机使用时长</div>
-    </div>
-
-    <div class="card row" style="cursor:pointer">
-      <div class="grow c-title">📋 我的任务清单</div>
-      <div style="color:var(--primary);font-size:15px">管理 ›</div>
-    </div>
-
-    <div class="card row" style="cursor:pointer">
-      <div class="grow c-title">⚙️ 提醒设置（阈值 / 间隔）</div>
-      <div style="color:var(--primary);font-size:15px">设置 ›</div>
-    </div>
-
-    <div class="card row" style="cursor:pointer">
-      <div class="grow c-title">🧪 模拟触发自律提醒（测试）</div>
-      <div style="color:var(--primary);font-size:15px">›</div>
+      <div class="card-title">系统适配（HyperOS / MIUI）</div>
+      <div class="hint">检测到 HyperOS，建议完成：自启动 → 后台弹出界面 → 省电策略</div>
+      <div class="small-btn-row mt12">
+        <button class="btn btn-tonal" style="font-size:13px;padding:9px 6px">自启动</button>
+        <button class="btn btn-tonal" style="font-size:13px;padding:9px 6px">后台弹出界面</button>
+        <button class="btn btn-tonal" style="font-size:13px;padding:9px 6px">省电策略</button>
+      </div>
     </div>
   </div>
 </div>
@@ -218,9 +255,9 @@
   <div class="statusbar"><span>9:41</span><span class="icons">▂▄▆ 📶 🔋</span></div>
   <div class="toolbar"><span class="back">←</span><span class="title">添加任务</span></div>
   <div class="content">
-    <div class="outline"><span class="olabel">任务名称（我该去做什么）</span><div class="ovalue">背英语单词</div></div>
-    <div class="outline"><span class="olabel">预计时长（分钟）</span><div class="ovalue">30</div></div>
-    <div class="outline"><span class="olabel">优先级（数字越小越优先，可选）</span><div class="ovalue">1</div></div>
+    <div class="outline"><span class="olabel">任务名称</span><div class="ovalue">背英语单词</div></div>
+    <div class="outline mt12"><span class="olabel">预计时长（分钟）</span><div class="ovalue">30</div></div>
+    <div class="outline mt12"><span class="olabel">优先级（越小越优先）</span><div class="ovalue">1</div></div>
   </div>
   <div class="row" style="padding: 8px 16px 16px; flex: none;">
     <button class="btn btn-text grow">取消</button>
@@ -228,63 +265,20 @@
   </div>
 </div>
 
-<!-- ============ 提醒设置 ============ -->
-<div class="phone screen" id="scr-settings" style="display:none">
-  <div class="statusbar"><span>9:41</span><span class="icons">▂▄▆ 📶 🔋</span></div>
-  <div class="toolbar"><span class="back">←</span><span class="title">提醒设置</span></div>
-  <div class="content">
-    <div class="outline"><span class="olabel">每日使用时长阈值（分钟）：达到后提醒</span><div class="ovalue">60</div></div>
-    <div class="outline"><span class="olabel">两次提醒的最小间隔（分钟）</span><div class="ovalue">30</div></div>
-
-    <div class="card">
-      <div class="row">
-        <div class="grow">
-          <div class="c-title">忽略本应用自身使用时间</div>
-          <div class="c-sub">开启后，查看本应用界面的时间不计入使用时长</div>
-        </div>
-        <div class="switch"></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="c-title">🔒 使用情况访问权限</div>
-      <div class="c-sub">✅ 已授予：可以检测手机使用时长</div>
-    </div>
-
-    <div class="card">
-      <div class="c-title">🔋 电池优化</div>
-      <div class="c-sub">✅ 已允许：后台监控更稳定</div>
-    </div>
-
-    <div class="card">
-      <div class="c-title">📱 系统适配（HyperOS / MIUI）</div>
-      <div class="c-sub">检测到 HyperOS 系统。为保证后台监控与提醒正常，请依次完成：自启动 → 后台弹出界面 → 省电策略（无限制）</div>
-      <div class="small-btn-row mt12">
-        <button class="btn btn-tonal" style="font-size:13px;padding:9px 6px">自启动</button>
-        <button class="btn btn-tonal" style="font-size:13px;padding:9px 6px">后台弹出界面</button>
-        <button class="btn btn-tonal" style="font-size:13px;padding:9px 6px">省电策略</button>
-      </div>
-    </div>
-
-    <button class="btn btn-primary btn-block mt16">保存设置</button>
-  </div>
-</div>
-
-<!-- ============ 自律提醒页 ============ -->
+<!-- ============ 提醒页 ============ -->
 <div class="phone screen" id="scr-reminder" style="display:none">
   <div class="statusbar"><span>9:41</span><span class="icons">▂▄▆ 📶 🔋</span></div>
   <div class="content">
     <div class="rem-title">⏰ 自律提醒</div>
-    <div class="subtitle" style="font-size:15px;font-weight:600;color:var(--text);margin-top:10px">今日已使用手机 2小时15分钟</div>
-    <div class="subtitle">你已经使用手机很久了，是时候去做更重要的事了</div>
+    <div class="subtitle" style="font-size:15px;font-weight:600;color:var(--text);margin-top:10px">本次解锁已使用 2小时15分钟</div>
 
     <div class="card" style="margin-top:22px">
       <div class="tag">建议你去做</div>
       <div style="font-size:21px;font-weight:700;color:var(--text);margin-top:8px">背英语单词</div>
-      <div class="c-sub">预计时长 30 分钟 · 优先级 1</div>
+      <div class="hint" style="margin-top:2px">预计 30 分钟</div>
       <div class="progress"><i style="width:40%"></i></div>
       <div class="countdown">19:35</div>
-      <div class="c-sub center">专注中，完成后点击「完成」</div>
+      <div class="hint center">专注中</div>
     </div>
 
     <button class="btn btn-primary btn-block mt24">我已完成这个任务</button>
@@ -310,7 +304,7 @@
     document.body.classList.add('single');
     show(scr);
   } else {
-    show('main');
+    show('home');
   }
   document.querySelectorAll('#switcher button').forEach(function (b) {
     b.addEventListener('click', function () { show(b.dataset.s); });

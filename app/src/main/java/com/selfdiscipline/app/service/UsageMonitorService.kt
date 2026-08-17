@@ -5,14 +5,17 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
+import androidx.core.content.ContextCompat
 import com.selfdiscipline.app.MainActivity
 import com.selfdiscipline.app.R
 import com.selfdiscipline.app.data.AppSettings
@@ -27,11 +30,11 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
- * 后台使用时长监控前台服务。
+ * 后台使用时长监控前台服务（省电设计）。
  *
- * 每 60 秒统计一次当日手机使用时长：
- *  - 更新前台通知与主界面（广播 ACTION_UPDATE）
- *  - 超过阈值且满足最小间隔时，触发自律提醒（全屏通知）
+ * 计时完全由屏幕事件驱动（亮屏/息屏/解锁广播），不使用轮询查询；
+ * 亮屏期间每 5 分钟低频检查一次阈值并更新通知；息屏后不做任何主动工作。
+ * 不持有唤醒锁、不查询 UsageStatsManager，耗电可忽略。
  *
  * Android 14+ 使用 specialUse 前台服务类型。
  */
@@ -42,7 +45,9 @@ class UsageMonitorService : Service() {
 
         const val CHANNEL_MONITOR = "usage_monitor_channel"
         const val NOTIFICATION_ID = 1001
-        private const val POLL_INTERVAL_MS = 60_000L
+
+        /** 亮屏期间阈值检查周期 */
+        private const val CHECK_INTERVAL_MS = 5 * 60_000L
 
         const val ACTION_STOP = "com.selfdiscipline.app.action.STOP_MONITOR"
         const val ACTION_UPDATE = "com.selfdiscipline.app.action.USAGE_UPDATE"
@@ -65,7 +70,29 @@ class UsageMonitorService : Service() {
     private val settings by lazy { AppSettings(this) }
     private var started = false
 
+    private val screenReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            when (intent?.action) {
+                Intent.ACTION_SCREEN_ON -> SessionUsage.onScreenOn(this@UsageMonitorService)
+                Intent.ACTION_SCREEN_OFF -> SessionUsage.onScreenOff(this@UsageMonitorService)
+                Intent.ACTION_USER_PRESENT -> SessionUsage.onUserPresent(this@UsageMonitorService)
+                else -> return
+            }
+            onUsageChanged()
+        }
+    }
+
     override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onCreate() {
+        super.onCreate()
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_USER_PRESENT)
+        }
+        ContextCompat.registerReceiver(this, screenReceiver, filter, ContextCompat.RECEIVER_EXPORTED)
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
@@ -82,16 +109,21 @@ class UsageMonitorService : Service() {
             ServiceCompat.startForeground(
                 this,
                 NOTIFICATION_ID,
-                buildNotification(0L),
+                buildNotification(SessionUsage.currentMs(this)),
                 fgsType()
             )
-            startMonitoring()
+            startChecking()
         }
         return START_STICKY
     }
 
     override fun onDestroy() {
         scope.cancel()
+        try {
+            unregisterReceiver(screenReceiver)
+        } catch (e: Exception) {
+            // ignore
+        }
         super.onDestroy()
     }
 
@@ -103,26 +135,42 @@ class UsageMonitorService : Service() {
             0
         }
 
-    private fun startMonitoring() {
+    /** 低频检查循环：coroutine delay 不会唤醒休眠中的设备，息屏时零耗电 */
+    private fun startChecking() {
         scope.launch {
             while (isActive) {
                 try {
-                    val usage = UsageStatsHelper.getTodayUsageMillis(this@UsageMonitorService, settings.excludeSelf)
-                    updateForegroundNotification(usage)
-                    broadcastUsage(usage)
-                    maybeRemind(usage)
+                    checkAndUpdate()
                 } catch (e: Exception) {
-                    Log.w(TAG, "monitor loop error", e)
+                    Log.w(TAG, "check error", e)
                 }
-                delay(POLL_INTERVAL_MS)
+                delay(CHECK_INTERVAL_MS)
             }
         }
+    }
+
+    /** 屏幕事件发生后立即刷新 */
+    private fun onUsageChanged() {
+        scope.launch {
+            try {
+                checkAndUpdate()
+            } catch (e: Exception) {
+                Log.w(TAG, "event update error", e)
+            }
+        }
+    }
+
+    private suspend fun checkAndUpdate() {
+        val usage = SessionUsage.currentMs(this)
+        updateForegroundNotification(usage)
+        broadcastUsage(usage)
+        maybeRemind(usage)
     }
 
     /**
      * 判断是否需要弹出自律提醒：
      *  - 开关已开启
-     *  - 当日使用时长 >= 阈值
+     *  - 本次会话使用时长 >= 阈值
      *  - 距离上次提醒超过最小间隔
      * 提醒内容会带上“下一个最该做的任务”。
      */
@@ -170,7 +218,7 @@ class UsageMonitorService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_MONITOR)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("自律助手 · 监控中")
-            .setContentText("今日已使用手机 ${TimeFormat.formatDuration(usageMillis)}")
+            .setContentText("本次解锁已使用 ${TimeFormat.formatDuration(usageMillis)}")
             .setContentIntent(openIntent)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
