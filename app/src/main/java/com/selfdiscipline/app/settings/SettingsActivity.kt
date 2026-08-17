@@ -1,11 +1,17 @@
 package com.selfdiscipline.app.settings
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
+import android.animation.ValueAnimator
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
 import android.view.View
+import android.view.ViewGroup
+import android.view.animation.AccelerateInterpolator
+import android.view.animation.DecelerateInterpolator
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.selfdiscipline.app.data.AppSettings
@@ -80,14 +86,81 @@ class SettingsActivity : AppCompatActivity() {
         Toast.makeText(this, "自律监控已关闭", Toast.LENGTH_SHORT).show()
     }
 
-    // ---------- 提醒设置折叠 ----------
+    // ---------- 提醒设置折叠（带展开/收起动画） ----------
 
     private fun setupRemindCollapse() {
         var expanded = false
         binding.remindHeader.setOnClickListener {
             expanded = !expanded
-            binding.layoutRemindFields.visibility = if (expanded) View.VISIBLE else View.GONE
-            binding.ivRemindArrow.animate().rotation(if (expanded) 180f else 0f).setDuration(200).start()
+            binding.ivRemindArrow.animate()
+                .rotation(if (expanded) 180f else 0f)
+                .setDuration(200)
+                .start()
+            if (expanded) expandRemindFields() else collapseRemindFields()
+        }
+    }
+
+    /** 展开：高度 0 → 内容高度 + 淡入上移 */
+    private fun expandRemindFields() {
+        val v = binding.layoutRemindFields
+        val parentWidth = (v.parent as? View)?.width ?: resources.displayMetrics.widthPixels
+        v.measure(
+            View.MeasureSpec.makeMeasureSpec(parentWidth, View.MeasureSpec.AT_MOST),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+        val targetHeight = v.measuredHeight
+
+        v.visibility = View.VISIBLE
+        v.alpha = 0f
+        v.translationY = 10f
+        v.animate().alpha(1f).translationY(0f).setDuration(240).start()
+
+        val lp = v.layoutParams
+        lp.height = 0
+        v.layoutParams = lp
+
+        ValueAnimator.ofInt(0, targetHeight).apply {
+            duration = 240
+            interpolator = DecelerateInterpolator()
+            addUpdateListener { a ->
+                val p = v.layoutParams
+                p.height = a.animatedValue as Int
+                v.layoutParams = p
+            }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    val p = v.layoutParams
+                    p.height = ViewGroup.LayoutParams.WRAP_CONTENT
+                    v.layoutParams = p
+                }
+            })
+            start()
+        }
+    }
+
+    /** 收起：高度 → 0 + 淡出下移 */
+    private fun collapseRemindFields() {
+        val v = binding.layoutRemindFields
+        val startHeight = v.height
+        v.animate().alpha(0f).translationY(10f).setDuration(200).start()
+
+        ValueAnimator.ofInt(startHeight, 0).apply {
+            duration = 200
+            interpolator = AccelerateInterpolator()
+            addUpdateListener { a ->
+                val p = v.layoutParams
+                p.height = a.animatedValue as Int
+                v.layoutParams = p
+            }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    v.visibility = View.GONE
+                    val p = v.layoutParams
+                    p.height = ViewGroup.LayoutParams.WRAP_CONTENT
+                    v.layoutParams = p
+                }
+            })
+            start()
         }
     }
 

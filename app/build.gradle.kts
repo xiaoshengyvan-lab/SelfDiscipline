@@ -12,8 +12,8 @@ android {
         applicationId = "com.selfdiscipline.app"
         minSdk = 26          // Android 8.0+，覆盖绝大多数设备
         targetSdk = 34
-        versionCode = 19
-        versionName = "1.7.4"
+        versionCode = 20
+        versionName = "1.7.5"
     }
 
     buildTypes {
