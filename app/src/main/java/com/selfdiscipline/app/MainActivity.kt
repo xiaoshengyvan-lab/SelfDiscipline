@@ -111,6 +111,7 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
         binding.cardNextTask.setOnClickListener { openFocus() }
+        binding.btnStartFocus.setOnClickListener { openFocus() }
         binding.btnGoAddTask.setOnClickListener {
             startActivity(Intent(this, TaskListActivity::class.java))
         }
@@ -169,15 +170,21 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             repository.allTasks.collectLatest { tasks ->
                 val pending = tasks.filter { !it.done }
+                val completedToday = tasks.count {
+                    it.done && it.doneAt != null && it.doneAt >= startOfToday()
+                }
                 nextTask = pending.firstOrNull()
                 val next = nextTask
-                binding.tvPendingCount.text =
-                    if (pending.isEmpty()) "暂无待办任务" else "还有 ${pending.size} 个待办未完成"
+
+                binding.tvTodayStats.text =
+                    "今日已完成 $completedToday · 待办 ${pending.size}"
+
                 if (next != null) {
                     binding.cardNextTask.visibility = View.VISIBLE
                     binding.cardNoTask.visibility = View.GONE
                     binding.tvNextTitle.text = next.title
-                    binding.tvNextMeta.text = "预计 ${next.durationMinutes} 分钟"
+                    binding.tvNextMeta.text =
+                        "预计 ${next.durationMinutes} 分钟 · 还有 ${pending.size} 个待办未完成"
                 } else {
                     binding.cardNextTask.visibility = View.GONE
                     binding.cardNoTask.visibility = View.VISIBLE
@@ -186,20 +193,55 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun startOfToday(): Long {
+        val cal = java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.HOUR_OF_DAY, 0)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }
+        return cal.timeInMillis
+    }
+
     // ---------- 使用时长 ----------
 
     private fun showUsage(usageMillis: Long) {
-        binding.tvUsage.text = TimeFormat.formatDuration(usageMillis)
+        // 大数字 + 小号单位（Spannable）
+        binding.tvUsage.text = usageText(usageMillis)
 
         val threshold = settings.dailyThresholdMinutes * 60_000L
         val progress = if (threshold > 0) (usageMillis.toFloat() / threshold).coerceIn(0f, 1f) else 0f
-        binding.progressUsage.progress = (progress * 100).toInt()
+        binding.progressUsage.setProgressCompat((progress * 100).toInt(), true)
 
         binding.tvUsageHint.text = when {
             !settings.monitoringEnabled -> "自律提醒未开启 · 请到设置页开启"
             usageMillis <= 0L -> "解锁手机后开始计时"
             usageMillis >= threshold -> "已达阈值 ${settings.dailyThresholdMinutes} 分钟"
             else -> "距提醒还差 ${TimeFormat.formatDuration(threshold - usageMillis)}"
+        }
+    }
+
+    /** 数字大号、单位小号的展示文案 */
+    private fun usageText(millis: Long): CharSequence {
+        val text = TimeFormat.formatDuration(millis) // 如 45分钟 / 2小时15分钟
+        val unitLen = when {
+            text.endsWith("分钟") || text.endsWith("小时") -> 2
+            else -> 0
+        }
+        if (unitLen == 0) return text
+        return android.text.SpannableString(text).apply {
+            setSpan(
+                android.text.style.RelativeSizeSpan(0.45f),
+                text.length - unitLen, text.length,
+                android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+            setSpan(
+                android.text.style.ForegroundColorSpan(
+                    ContextCompat.getColor(this@MainActivity, R.color.text_secondary)
+                ),
+                text.length - unitLen, text.length,
+                android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
         }
     }
 }

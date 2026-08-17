@@ -9,20 +9,22 @@
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
+        android:layout_height="wrap_content"
         android:background="@color/bg"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
         app:title="自律助手"
-        app:titleTextAppearance="?attr/textAppearanceTitleLarge">
+        app:titleTextAppearance="@style/TextAppearance.App.Title">
 
         <ImageView
             android:id="@+id/btnSettings"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
             android:layout_gravity="end"
-            android:layout_marginEnd="8dp"
+            android:layout_marginEnd="6dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="设置"
-            android:padding="8dp"
+            android:padding="10dp"
             android:src="@drawable/ic_settings" />
     </com.google.android.material.appbar.MaterialToolbar>
 
@@ -35,17 +37,18 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="96dp">
 
-            <!-- 使用时长 -->
+            <!-- 第一卡片：本次解锁使用（核心数据） -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:cardBackgroundColor="@color/surface"
-                app:cardCornerRadius="18dp"
-                app:cardElevation="0dp"
-                app:strokeColor="#EEEFF0"
-                app:strokeWidth="1dp">
+                app:cardCornerRadius="20dp"
+                app:cardElevation="2dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -57,8 +60,8 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="本次解锁使用"
-                        android:textAppearance="?attr/textAppearanceLabelLarge"
-                        android:textColor="@color/text_secondary" />
+                        android:textColor="@color/text_label"
+                        android:textSize="16sp" />
 
                     <TextView
                         android:id="@+id/tvUsage"
@@ -66,15 +69,15 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="6dp"
                         android:text="0分钟"
-                        android:textAppearance="?attr/textAppearanceDisplaySmall"
                         android:textColor="@color/primary"
+                        android:textSize="56sp"
                         android:textStyle="bold" />
 
                     <com.google.android.material.progressindicator.LinearProgressIndicator
                         android:id="@+id/progressUsage"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="14dp"
+                        android:layout_marginTop="18dp"
                         android:max="100"
                         app:indicatorColor="@color/primary"
                         app:trackColor="@color/surface_variant"
@@ -85,10 +88,10 @@
                         android:id="@+id/tvUsageHint"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
+                        android:layout_marginTop="14dp"
                         android:text="距提醒还差 60分钟"
-                        android:textAppearance="?attr/textAppearanceBodySmall"
-                        android:textColor="@color/text_secondary" />
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -97,7 +100,7 @@
                 android:id="@+id/cardPermission"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
+                android:layout_marginTop="16dp"
                 app:cardBackgroundColor="#FFF8E1"
                 app:cardCornerRadius="14dp"
                 app:cardElevation="0dp">
@@ -128,20 +131,18 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- 下一步任务：点击进入专注页 -->
+            <!-- 第二卡片：下一步要做（点击卡片或按钮进入专注） -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/cardNextTask"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
+                android:layout_marginTop="24dp"
                 android:clickable="true"
                 android:focusable="true"
                 android:foreground="?attr/selectableItemBackground"
                 app:cardBackgroundColor="@color/surface"
-                app:cardCornerRadius="18dp"
-                app:cardElevation="0dp"
-                app:strokeColor="#EEEFF0"
-                app:strokeWidth="1dp">
+                app:cardCornerRadius="20dp"
+                app:cardElevation="2dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -153,47 +154,57 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="下一步要做"
-                        android:textAppearance="?attr/textAppearanceLabelLarge"
-                        android:textColor="@color/text_secondary" />
+                        android:textColor="@color/text_label"
+                        android:textSize="16sp" />
 
                     <TextView
                         android:id="@+id/tvNextTitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="6dp"
-                        android:textAppearance="?attr/textAppearanceHeadlineSmall"
+                        android:textColor="@color/text_primary"
+                        android:textSize="24sp"
                         android:textStyle="bold" />
 
                     <TextView
                         android:id="@+id/tvNextMeta"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:textAppearance="?attr/textAppearanceBodyMedium"
-                        android:textColor="@color/text_secondary" />
+                        android:layout_marginTop="6dp"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="14sp" />
 
-                    <TextView
-                        android:id="@+id/tvPendingCount"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:textAppearance="?attr/textAppearanceBodySmall"
-                        android:textColor="@color/text_secondary" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnStartFocus"
+                        android:layout_width="match_parent"
+                        android:layout_height="52dp"
+                        android:layout_marginTop="20dp"
+                        android:text="开始专注"
+                        android:textSize="18sp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
+
+            <!-- 今日数据预览（填充底部空白） -->
+            <TextView
+                android:id="@+id/tvTodayStats"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:gravity="center"
+                android:text="今日已完成 0 · 待办 0"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp" />
 
             <!-- 无任务 -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/cardNoTask"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
+                android:layout_marginTop="24dp"
                 android:visibility="gone"
                 app:cardBackgroundColor="@color/surface"
-                app:cardCornerRadius="18dp"
-                app:cardElevation="0dp"
-                app:strokeColor="#EEEFF0"
-                app:strokeWidth="1dp">
+                app:cardCornerRadius="20dp"
+                app:cardElevation="2dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
