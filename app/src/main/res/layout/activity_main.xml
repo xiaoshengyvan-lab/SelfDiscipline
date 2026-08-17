@@ -103,26 +103,26 @@
                     android:layout_height="wrap_content"
                     android:text="暂无待办"
                     android:textColor="@color/text_label"
-                    android:textSize="15sp" />
+                    android:textSize="18sp" />
 
                 <TextView
                     android:id="@+id/tvDialCountdown"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
+                    android:layout_marginTop="12dp"
                     android:text="点击开始专注"
                     android:textColor="@color/text_primary"
-                    android:textSize="38sp"
+                    android:textSize="48sp"
                     android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/tvDialHint"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
+                    android:layout_marginTop="10dp"
                     android:text="点击表盘开始 / 暂停"
                     android:textColor="@color/text_secondary"
-                    android:textSize="12sp" />
+                    android:textSize="13sp" />
             </LinearLayout>
         </com.selfdiscipline.app.view.CircularTouchLayout>
 

@@ -255,17 +255,25 @@ class MainActivity : AppCompatActivity() {
         refreshFocusState()
     }
 
-    /** 长按表盘：标记当前任务完成 */
+    /** 长按表盘：标记当前任务完成，并切换到下一个待办任务 */
     private fun completeTask() {
         val task = currentTask ?: return
         tickerJob?.cancel()
         settings.clearFocus()
         lifecycleScope.launch {
             if (task.id > 0) repository.markDone(task.id)
+            // 完成的同时切换到下一个待办任务
+            val next = repository.nextPending()
+            currentTask = next
             remainingMs = 0L
             deadlineAt = 0L
             mode = MODE_IDLE
-            Toast.makeText(this@MainActivity, "已完成「${task.title}」", Toast.LENGTH_SHORT).show()
+            val msg = if (next != null) {
+                "已完成「${task.title}」，下一个：${next.title}"
+            } else {
+                "已完成「${task.title}」"
+            }
+            Toast.makeText(this@MainActivity, msg, Toast.LENGTH_SHORT).show()
             render()
         }
     }
@@ -289,7 +297,7 @@ class MainActivity : AppCompatActivity() {
             else -> {
                 // 未开始：不显示倒计时，只显示提示
                 binding.tvDialCountdown.text = if (task == null) "暂无待办" else "点击开始专注"
-                binding.tvDialCountdown.textSize = if (task == null) 20f else 24f
+                binding.tvDialCountdown.textSize = if (task == null) 24f else 30f
                 binding.tvDialHint.text =
                     if (task == null) "点击下方 + 添加任务" else "点击表盘开始 / 暂停"
             }
