@@ -1,0 +1,10 @@
+# 统一换行符：避免 Windows 检出导致 Linux 上脚本执行失败
+gradlew text eol=lf
+*.sh text eol=lf
+*.bat text eol=crlf
+*.gradle text eol=lf
+*.gradle.kts text eol=lf
+*.kt text eol=lf
+*.xml text eol=lf
+*.md text eol=lf
+*.yml text eol=lf

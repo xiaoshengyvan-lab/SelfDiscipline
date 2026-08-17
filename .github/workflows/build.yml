@@ -31,17 +31,38 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK (platform 34 + build-tools)
+      # 镜像自带 SDK 时直接使用；缺失时才尝试安装（sdkmanager 可能不在 PATH，需全路径回退）
+      - name: Set up Android SDK (ensure platform 34 + build-tools)
         run: |
-          echo "y" | sdkmanager --licenses >/dev/null 2>&1 || true
-          sdkmanager --install "platforms;android-34" "build-tools;34.0.0" "platform-tools" >/dev/null
+          set -e
+          if [ -d "$ANDROID_HOME/platforms/android-34" ] && [ -d "$ANDROID_HOME/build-tools/34.0.0" ]; then
+            echo "SDK components already installed: platforms/android-34 + build-tools/34.0.0"
+            exit 0
+          fi
+          SM="$(command -v sdkmanager 2>/dev/null || true)"
+          if [ -z "$SM" ]; then
+            for p in "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "$ANDROID_HOME/tools/bin/sdkmanager"; do
+              [ -x "$p" ] && SM="$p" && break
+            done
+          fi
+          if [ -z "$SM" ]; then
+            echo "::error::sdkmanager not found (ANDROID_HOME=$ANDROID_HOME)"
+            ls "$ANDROID_HOME" 2>/dev/null || true
+            exit 1
+          fi
+          yes | "$SM" --licenses >/dev/null 2>&1 || true
+          "$SM" --install "platforms;android-34" "build-tools;34.0.0" "platform-tools" >/dev/null 2>&1 || true
+          ls "$ANDROID_HOME/platforms" 2>/dev/null || true
 
       # 仓库未包含 gradle-wrapper.jar（二进制文件无法在此环境生成），
-      # 云端联网后从 Gradle 官方仓库恢复它
+      # 云端联网后从 Gradle 官方仓库恢复（带镜像兜底）
       - name: Restore Gradle wrapper jar
         run: |
           curl -fsSL -o gradle/wrapper/gradle-wrapper.jar \
-            https://raw.githubusercontent.com/gradle/gradle/v8.9.0/gradle/wrapper/gradle-wrapper.jar
+            https://raw.githubusercontent.com/gradle/gradle/v8.9.0/gradle/wrapper/gradle-wrapper.jar \
+            || curl -fsSL -o gradle/wrapper/gradle-wrapper.jar \
+            https://cdn.jsdelivr.net/gh/gradle/gradle@v8.9.0/gradle/wrapper/gradle-wrapper.jar
+          ls -l gradle/wrapper/gradle-wrapper.jar
           chmod +x gradlew
 
       - name: Set up Gradle (含构建缓存)
