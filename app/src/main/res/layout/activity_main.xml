@@ -55,44 +55,44 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:padding="12dp">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="本次解锁使用"
                         android:textColor="@color/text_label"
-                        android:textSize="14sp" />
+                        android:textSize="13sp" />
 
                     <TextView
                         android:id="@+id/tvUsage"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
+                        android:layout_marginTop="2dp"
                         android:text="0分钟"
                         android:textColor="@color/primary"
-                        android:textSize="40sp"
+                        android:textSize="32sp"
                         android:textStyle="bold" />
 
                     <com.google.android.material.progressindicator.LinearProgressIndicator
                         android:id="@+id/progressUsage"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="14dp"
+                        android:layout_marginTop="10dp"
                         android:max="100"
                         app:indicatorColor="@color/primary"
                         app:trackColor="@color/surface_variant"
-                        app:trackCornerRadius="4dp"
-                        app:trackThickness="8dp" />
+                        app:trackCornerRadius="3dp"
+                        app:trackThickness="6dp" />
 
                     <TextView
                         android:id="@+id/tvUsageHint"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="10dp"
+                        android:layout_marginTop="8dp"
                         android:text="距提醒还差 60分钟"
                         android:textColor="@color/text_secondary"
-                        android:textSize="12sp" />
+                        android:textSize="11sp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -233,14 +233,30 @@
         </LinearLayout>
     </ScrollView>
 
-    <!-- 底部居中圆形加号：快速添加待办 -->
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fabAddTodo"
+    <!-- 底部居中：添加任务 + / 任务清单 -->
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|center_horizontal"
-        android:layout_marginBottom="24dp"
-        android:contentDescription="快速添加待办"
-        android:src="@drawable/ic_add"
-        app:tint="@android:color/white" />
+        android:layout_marginBottom="20dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/fabAddTask"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="添加任务"
+            android:src="@drawable/ic_add"
+            app:tint="@android:color/white" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/fabTaskList"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:contentDescription="任务清单"
+            android:src="@drawable/ic_list"
+            app:tint="@android:color/white" />
+    </LinearLayout>
 </LinearLayout>

@@ -2,6 +2,7 @@ package com.selfdiscipline.app.task
 
 import android.graphics.Paint
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -10,12 +11,11 @@ import com.selfdiscipline.app.data.Task
 import com.selfdiscipline.app.databinding.ItemTaskBinding
 
 /**
- * 任务列表适配器
+ * 任务列表适配器（无勾选框：完成任务在专注页完成，当天不再弹出提醒）
  */
 class TaskListAdapter(
     private val onEdit: (Task) -> Unit,
-    private val onDelete: (Task) -> Unit,
-    private val onToggleDone: (Task) -> Unit
+    private val onDelete: (Task) -> Unit
 ) : ListAdapter<Task, TaskListAdapter.TaskViewHolder>(Diff) {
 
     private object Diff : DiffUtil.ItemCallback<Task>() {
@@ -37,11 +37,11 @@ class TaskListAdapter(
             tvTaskMeta.text = "预计 ${task.durationMinutes} 分钟 · 优先级 ${task.priority}"
             if (task.done) {
                 tvTaskTitle.paintFlags = tvTaskTitle.paintFlags or Paint.STRIKE_THRU_TEXT_FLAG
+                tvDoneTag.visibility = View.VISIBLE
             } else {
                 tvTaskTitle.paintFlags = tvTaskTitle.paintFlags and Paint.STRIKE_THRU_TEXT_FLAG.inv()
+                tvDoneTag.visibility = View.GONE
             }
-            cbDone.isChecked = task.done
-            cbDone.setOnCheckedChangeListener { _, _ -> onToggleDone(task) }
             btnEdit.setOnClickListener { onEdit(task) }
             btnDelete.setOnClickListener { onDelete(task) }
         }

@@ -1,7 +1,6 @@
 package com.selfdiscipline.app
 
 import android.Manifest
-import android.app.AlertDialog
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -9,9 +8,7 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.text.InputType
 import android.view.View
-import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -27,6 +24,7 @@ import com.selfdiscipline.app.service.SessionUsage
 import com.selfdiscipline.app.service.UsageMonitorService
 import com.selfdiscipline.app.service.UsageStatsHelper
 import com.selfdiscipline.app.settings.SettingsActivity
+import com.selfdiscipline.app.task.TaskEditActivity
 import com.selfdiscipline.app.task.TaskListActivity
 import com.selfdiscipline.app.util.TimeFormat
 import kotlinx.coroutines.flow.collectLatest
@@ -120,7 +118,13 @@ class MainActivity : AppCompatActivity() {
         binding.btnGoAddTask.setOnClickListener {
             startActivity(Intent(this, TaskListActivity::class.java))
         }
-        binding.fabAddTodo.setOnClickListener { showQuickAddDialog() }
+        // 底部按钮：添加任务 / 任务清单
+        binding.fabAddTask.setOnClickListener {
+            TaskEditActivity.start(this, null)
+        }
+        binding.fabTaskList.setOnClickListener {
+            startActivity(Intent(this, TaskListActivity::class.java))
+        }
         binding.btnGrantPermission.setOnClickListener {
             UsageStatsHelper.openUsageAccessSettings(this)
         }
@@ -133,37 +137,6 @@ class MainActivity : AppCompatActivity() {
                 .putExtra(ReminderActivity.EXTRA_USAGE, SessionUsage.currentMs(this))
                 .putExtra(ReminderActivity.EXTRA_TASK_ID, task.id)
         )
-    }
-
-    /** 底部圆形加号：弹窗快速添加待办（默认 30 分钟），并可查看任务清单 */
-    private fun showQuickAddDialog() {
-        val input = EditText(this).apply {
-            hint = "要做什么…"
-            inputType = InputType.TYPE_CLASS_TEXT
-            maxLines = 1
-        }
-        val pad = (16 * resources.displayMetrics.density).toInt()
-        input.setPadding(pad, pad, pad, pad)
-
-        AlertDialog.Builder(this)
-            .setTitle("快速待办")
-            .setView(input)
-            .setPositiveButton("添加") { _, _ ->
-                val title = input.text?.toString()?.trim().orEmpty()
-                if (title.isEmpty()) {
-                    Toast.makeText(this, "先输入要做的事", Toast.LENGTH_SHORT).show()
-                    return@setPositiveButton
-                }
-                lifecycleScope.launch {
-                    repository.add(title, 30, 0)
-                    Toast.makeText(this@MainActivity, "已加入待办", Toast.LENGTH_SHORT).show()
-                }
-            }
-            .setNeutralButton("查看任务清单") { _, _ ->
-                startActivity(Intent(this, TaskListActivity::class.java))
-            }
-            .setNegativeButton("取消", null)
-            .show()
     }
 
     private fun updatePermissionBanner() {

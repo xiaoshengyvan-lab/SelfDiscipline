@@ -23,8 +23,7 @@ class TaskListActivity : AppCompatActivity() {
 
     private val adapter = TaskListAdapter(
         onEdit = { task -> TaskEditActivity.start(this, task.id) },
-        onDelete = { task -> deleteTask(task) },
-        onToggleDone = { task -> toggleDone(task) }
+        onDelete = { task -> deleteTask(task) }
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -53,16 +52,6 @@ class TaskListActivity : AppCompatActivity() {
         lifecycleScope.launch {
             repository.delete(task)
             Toast.makeText(this@TaskListActivity, "已删除「${task.title}」", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun toggleDone(task: Task) {
-        lifecycleScope.launch {
-            if (task.done) {
-                repository.reset(task.id)
-            } else {
-                repository.markDone(task.id)
-            }
         }
     }
 }
