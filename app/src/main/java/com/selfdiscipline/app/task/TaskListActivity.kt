@@ -36,10 +36,6 @@ class TaskListActivity : AppCompatActivity() {
         binding.recyclerTasks.layoutManager = LinearLayoutManager(this)
         binding.recyclerTasks.adapter = adapter
 
-        binding.fabAddTask.setOnClickListener {
-            TaskEditActivity.start(this, null)
-        }
-
         lifecycleScope.launch {
             repository.allTasks.collectLatest { tasks ->
                 adapter.submitList(tasks)

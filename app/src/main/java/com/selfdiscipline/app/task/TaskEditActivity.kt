@@ -38,6 +38,10 @@ class TaskEditActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         binding.toolbar.setNavigationOnClickListener { finish() }
+        // 右上角：任务清单入口
+        binding.btnTaskList.setOnClickListener {
+            startActivity(Intent(this, TaskListActivity::class.java))
+        }
 
         editingTaskId = intent.getLongExtra(EXTRA_TASK_ID, -1L).takeIf { it > 0 }
 
@@ -53,7 +57,6 @@ class TaskEditActivity : AppCompatActivity() {
         }
 
         binding.btnSave.setOnClickListener { save() }
-        binding.btnCancel.setOnClickListener { finish() }
     }
 
     private fun save() {

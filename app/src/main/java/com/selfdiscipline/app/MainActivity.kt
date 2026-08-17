@@ -1,13 +1,11 @@
 package com.selfdiscipline.app
 
 import android.Manifest
-import android.content.BroadcastReceiver
-import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -18,31 +16,44 @@ import com.selfdiscipline.app.data.AppSettings
 import com.selfdiscipline.app.data.Task
 import com.selfdiscipline.app.data.TaskRepository
 import com.selfdiscipline.app.databinding.ActivityMainBinding
-import com.selfdiscipline.app.reminder.ReminderActivity
 import com.selfdiscipline.app.service.DailyScheduler
-import com.selfdiscipline.app.service.SessionUsage
+import com.selfdiscipline.app.service.ReminderNotifier
 import com.selfdiscipline.app.service.UsageMonitorService
 import com.selfdiscipline.app.service.UsageStatsHelper
 import com.selfdiscipline.app.settings.SettingsActivity
 import com.selfdiscipline.app.task.TaskEditActivity
 import com.selfdiscipline.app.task.TaskListActivity
 import com.selfdiscipline.app.util.TimeFormat
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 /**
- * 主页：
- *  - 本次解锁使用时长 + 阈值进度
- *  - 下一步任务卡片（点击进入专注页）
- *  - 底部居中圆形加号：弹窗快速添加待办
- *  - 未授权时才显示权限引导（授权后自动隐藏）
+ * 首页（专注表盘页）：
+ *  - 核心圆形表盘：点击开始/暂停/继续专注，长按标记完成
+ *  - 表盘内部：待办名称 / 倒计时 / 状态提示；圆环进度随专注时长增长
+ *  - 权限提示条（仅未授权时显示）、今日统计
+ *  - 底部：＋ 新增待办 / ☰ 待办清单
  */
 class MainActivity : AppCompatActivity() {
+
+    companion object {
+        private const val MODE_IDLE = 0
+        private const val MODE_COUNTING = 1
+        private const val MODE_PAUSED = 2
+    }
 
     private lateinit var binding: ActivityMainBinding
     private val settings by lazy { AppSettings(this) }
     private val repository by lazy { TaskRepository.get(this) }
+
     private var nextTask: Task? = null
+    private var currentTask: Task? = null
+    private var remainingMs = 0L
+    private var deadlineAt = 0L
+    private var mode = MODE_IDLE
+    private var tickerJob: Job? = null
 
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -51,14 +62,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-    /** 接收后台服务广播的实时会话使用时长 */
-    private val usageReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            val usage = intent?.getLongExtra(UsageMonitorService.EXTRA_USAGE_MILLIS, -1L) ?: -1L
-            if (usage >= 0) showUsage(usage)
-        }
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -66,36 +69,25 @@ class MainActivity : AppCompatActivity() {
 
         requestNotificationPermissionIfNeeded()
         setupActions()
+        setupDial()
         observeTasks()
-    }
-
-    override fun onStart() {
-        super.onStart()
-        ContextCompat.registerReceiver(
-            this,
-            usageReceiver,
-            IntentFilter(UsageMonitorService.ACTION_UPDATE),
-            ContextCompat.RECEIVER_NOT_EXPORTED
-        )
-    }
-
-    override fun onStop() {
-        super.onStop()
-        unregisterReceiver(usageReceiver)
     }
 
     override fun onResume() {
         super.onResume()
         updatePermissionBanner()
-        // 开关已开启时确保后台监控服务在运行（服务被杀/升级后自动恢复）
         if (settings.monitoringEnabled) {
             UsageMonitorService.start(this)
         }
-        // 每日 0 点刷新任务 + 每日任务提醒（打开 App 时立即生效）
         lifecycleScope.launch {
             DailyScheduler.checkDaily(this@MainActivity, repository)
         }
-        showUsage(SessionUsage.currentMs(this))
+        refreshFocusState()
+    }
+
+    override fun onDestroy() {
+        tickerJob?.cancel()
+        super.onDestroy()
     }
 
     // ---------- 初始化 ----------
@@ -113,12 +105,6 @@ class MainActivity : AppCompatActivity() {
         binding.btnSettings.setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
-        binding.cardNextTask.setOnClickListener { openFocus() }
-        binding.btnStartFocus.setOnClickListener { openFocus() }
-        binding.btnGoAddTask.setOnClickListener {
-            startActivity(Intent(this, TaskListActivity::class.java))
-        }
-        // 底部按钮：添加任务 / 任务清单
         binding.fabAddTask.setOnClickListener {
             TaskEditActivity.start(this, null)
         }
@@ -130,19 +116,170 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun openFocus() {
-        val task = nextTask ?: return
-        startActivity(
-            Intent(this, ReminderActivity::class.java)
-                .putExtra(ReminderActivity.EXTRA_USAGE, SessionUsage.currentMs(this))
-                .putExtra(ReminderActivity.EXTRA_TASK_ID, task.id)
-        )
+    private fun setupDial() {
+        // 点击表盘：开始 / 暂停 / 继续
+        binding.dialContainer.setOnClickListener { onDialTap() }
+        // 长按表盘：标记完成
+        binding.dialContainer.setOnLongClickListener {
+            completeTask()
+            true
+        }
     }
 
     private fun updatePermissionBanner() {
         val granted = UsageStatsHelper.hasUsageAccess(this)
-        // 仅未授权时显示，授权成功后自动隐藏
         binding.cardPermission.visibility = if (granted) View.GONE else View.VISIBLE
+    }
+
+    // ---------- 专注表盘 ----------
+
+    private fun refreshFocusState() {
+        val now = SystemClock.elapsedRealtime()
+        when {
+            settings.focusDeadlineElapsed > now -> {
+                deadlineAt = settings.focusDeadlineElapsed
+                mode = MODE_COUNTING
+                loadFocusedTask()
+            }
+            settings.focusRemainingMs > 0L && settings.focusTaskId >= 0L -> {
+                remainingMs = settings.focusRemainingMs
+                mode = MODE_PAUSED
+                loadFocusedTask()
+            }
+            else -> {
+                mode = MODE_IDLE
+                deadlineAt = 0L
+                remainingMs = 0L
+                render()
+            }
+        }
+    }
+
+    private fun loadFocusedTask() {
+        lifecycleScope.launch {
+            currentTask = repository.getById(settings.focusTaskId)
+            render()
+            if (mode == MODE_COUNTING && deadlineAt > SystemClock.elapsedRealtime()) {
+                startTicker()
+            }
+        }
+    }
+
+    private fun onDialTap() {
+        when (mode) {
+            MODE_IDLE -> startFocus()
+            MODE_COUNTING -> pauseFocus()
+            MODE_PAUSED -> resumeFocus()
+        }
+    }
+
+    private fun startFocus() {
+        val task = currentTask ?: nextTask ?: return
+        currentTask = task
+        remainingMs = task.durationMinutes * 60_000L
+        settings.focusTaskId = task.id
+        settings.focusTaskTitle = task.title
+        settings.focusTaskDurationMinutes = task.durationMinutes
+        settings.focusRemainingMs = remainingMs
+        resumeFocus()
+    }
+
+    private fun resumeFocus() {
+        if (remainingMs <= 0L) return
+        deadlineAt = SystemClock.elapsedRealtime() + remainingMs
+        settings.focusDeadlineElapsed = deadlineAt
+        mode = MODE_COUNTING
+        startTicker()
+    }
+
+    private fun pauseFocus() {
+        tickerJob?.cancel()
+        remainingMs = (deadlineAt - SystemClock.elapsedRealtime()).coerceAtLeast(0L)
+        settings.focusRemainingMs = remainingMs
+        settings.focusDeadlineElapsed = 0L
+        mode = MODE_PAUSED
+        render()
+    }
+
+    private fun startTicker() {
+        tickerJob?.cancel()
+        tickerJob = lifecycleScope.launch {
+            while (true) {
+                val remain = deadlineAt - SystemClock.elapsedRealtime()
+                if (remain <= 0L) {
+                    finishFocus()
+                    break
+                }
+                render()
+                delay(250L)
+            }
+        }
+        render()
+    }
+
+    /** 倒计时正常走完：重置并弹完成提醒 */
+    private fun finishFocus() {
+        tickerJob?.cancel()
+        val title = currentTask?.title ?: settings.focusTaskTitle.ifEmpty { "专注" }
+        settings.clearFocus()
+        remainingMs = 0L
+        deadlineAt = 0L
+        mode = MODE_IDLE
+        ReminderNotifier.showFocusFinished(this, title)
+        refreshFocusState()
+    }
+
+    /** 长按表盘：标记当前任务完成 */
+    private fun completeTask() {
+        val task = currentTask ?: return
+        tickerJob?.cancel()
+        settings.clearFocus()
+        lifecycleScope.launch {
+            if (task.id > 0) repository.markDone(task.id)
+            remainingMs = 0L
+            deadlineAt = 0L
+            mode = MODE_IDLE
+            Toast.makeText(this@MainActivity, "已完成「${task.title}」", Toast.LENGTH_SHORT).show()
+            render()
+        }
+    }
+
+    // ---------- 渲染 ----------
+
+    private fun render() {
+        val task = currentTask ?: nextTask
+        binding.tvDialTask.text = task?.title ?: "暂无待办"
+
+        val totalMs = (currentTask?.durationMinutes ?: nextTask?.durationMinutes ?: 30) * 60_000L
+
+        when (mode) {
+            MODE_COUNTING -> {
+                val remain = (deadlineAt - SystemClock.elapsedRealtime()).coerceAtLeast(0L)
+                binding.tvDialCountdown.text = TimeFormat.formatCountdown(remain)
+                binding.tvDialHint.text = "点击暂停"
+                setRingProgress(totalMs, remain)
+            }
+            MODE_PAUSED -> {
+                binding.tvDialCountdown.text = TimeFormat.formatCountdown(remainingMs)
+                binding.tvDialHint.text = "点击继续"
+                setRingProgress(totalMs, remainingMs)
+            }
+            else -> {
+                // 未开始：不显示倒计时，只显示提示
+                binding.tvDialCountdown.text = if (task == null) "暂无待办" else "点击开始专注"
+                binding.tvDialCountdown.textSize = if (task == null) 20f else 24f
+                binding.tvDialHint.text =
+                    if (task == null) "点击下方 + 添加任务" else "点击表盘开始 / 暂停"
+                setRingProgress(totalMs, totalMs) // 进度 0
+            }
+        }
+    }
+
+    private fun setRingProgress(totalMs: Long, remainMs: Long) {
+        val percent = if (totalMs > 0) {
+            ((totalMs - remainMs).coerceIn(0L, totalMs) * 100 / totalMs).toInt()
+        } else 0
+        binding.ringProgress.setProgressCompat(percent, true)
     }
 
     // ---------- 任务 ----------
@@ -155,20 +292,10 @@ class MainActivity : AppCompatActivity() {
                     it.done && it.doneAt != null && it.doneAt >= startOfToday()
                 }
                 nextTask = pending.firstOrNull()
-                val next = nextTask
-
                 binding.tvTodayStats.text =
                     "今日已完成 $completedToday · 待办 ${pending.size}"
-
-                if (next != null) {
-                    binding.cardNextTask.visibility = View.VISIBLE
-                    binding.cardNoTask.visibility = View.GONE
-                    binding.tvNextTitle.text = next.title
-                    binding.tvNextMeta.text =
-                        "预计 ${next.durationMinutes} 分钟 · 还有 ${pending.size} 个待办未完成"
-                } else {
-                    binding.cardNextTask.visibility = View.GONE
-                    binding.cardNoTask.visibility = View.VISIBLE
+                if (mode == MODE_IDLE) {
+                    render()
                 }
             }
         }
@@ -182,47 +309,5 @@ class MainActivity : AppCompatActivity() {
             set(java.util.Calendar.MILLISECOND, 0)
         }
         return cal.timeInMillis
-    }
-
-    // ---------- 使用时长 ----------
-
-    private fun showUsage(usageMillis: Long) {
-        // 大数字 + 小号单位（Spannable）
-        binding.tvUsage.text = usageText(usageMillis)
-
-        val threshold = settings.dailyThresholdMinutes * 60_000L
-        val progress = if (threshold > 0) (usageMillis.toFloat() / threshold).coerceIn(0f, 1f) else 0f
-        binding.progressUsage.setProgressCompat((progress * 100).toInt(), true)
-
-        binding.tvUsageHint.text = when {
-            !settings.monitoringEnabled -> "自律提醒未开启 · 请到设置页开启"
-            usageMillis <= 0L -> "解锁手机后开始计时"
-            usageMillis >= threshold -> "已达阈值 ${settings.dailyThresholdMinutes} 分钟"
-            else -> "距提醒还差 ${TimeFormat.formatDuration(threshold - usageMillis)}"
-        }
-    }
-
-    /** 数字大号、单位小号的展示文案 */
-    private fun usageText(millis: Long): CharSequence {
-        val text = TimeFormat.formatDuration(millis) // 如 45分钟 / 2小时15分钟
-        val unitLen = when {
-            text.endsWith("分钟") || text.endsWith("小时") -> 2
-            else -> 0
-        }
-        if (unitLen == 0) return text
-        return android.text.SpannableString(text).apply {
-            setSpan(
-                android.text.style.RelativeSizeSpan(0.45f),
-                text.length - unitLen, text.length,
-                android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-            )
-            setSpan(
-                android.text.style.ForegroundColorSpan(
-                    ContextCompat.getColor(this@MainActivity, R.color.text_secondary)
-                ),
-                text.length - unitLen, text.length,
-                android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-            )
-        }
     }
 }

@@ -33,19 +33,9 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:gravity="center"
-            android:text="还没有任务\n点击右下角 + 添加你的待办吧"
+            android:text="还没有任务\n请到首页点击 + 添加"
             android:textAppearance="?attr/textAppearanceBodyLarge"
             android:textColor="?android:attr/textColorSecondary"
             android:visibility="gone" />
-
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/fabAddTask"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="bottom|end"
-            android:layout_margin="20dp"
-            android:contentDescription="添加任务"
-            android:src="@drawable/ic_add"
-            app:tint="@android:color/white" />
     </FrameLayout>
 </LinearLayout>

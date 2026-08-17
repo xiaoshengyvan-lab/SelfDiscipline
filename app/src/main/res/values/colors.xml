@@ -14,4 +14,6 @@
     <color name="text_primary">#212121</color>
     <color name="text_secondary">#707070</color>
     <color name="text_label">#757575</color>
+    <!-- 表盘刻度（浅灰绿） -->
+    <color name="tick">#C9D6CA</color>
 </resources>

@@ -117,6 +117,19 @@
   .task .op { color: var(--primary); font-size: 13.5px; padding: 4px 6px; }
   .task .op.del { color: #B3261E; }
 
+  /* 圆形表盘 */
+  .dial { width: 230px; height: 230px; border-radius: 50%; background: var(--card); box-shadow: 0 2px 14px rgba(0,0,0,.08); position: relative; margin-top: 16px; }
+  .dial .ring { position: absolute; inset: 12px; border-radius: 50%; background: conic-gradient(var(--primary) 40%, var(--track) 0); }
+  .dial .hole { position: absolute; inset: 26px; border-radius: 50%; background: var(--card); }
+  .dial-ticks span { position: absolute; background: #C9D6CA; }
+  .t12 { top: 14px; left: 50%; width: 2px; height: 10px; transform: translateX(-50%); }
+  .t3 { right: 14px; top: 50%; width: 10px; height: 2px; transform: translateY(-50%); }
+  .t6 { bottom: 14px; left: 50%; width: 2px; height: 10px; transform: translateX(-50%); }
+  .t9 { left: 14px; top: 50%; width: 10px; height: 2px; transform: translateY(-50%); }
+  .dial-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .dial-task { font-size: 14px; color: var(--label); }
+  .dial-time { font-size: 34px; font-weight: 700; color: var(--text); margin-top: 8px; }
+  .dial-hint { font-size: 12px; color: var(--text2); margin-top: 6px; }
   .fab {
     position: absolute; right: 20px; bottom: 24px; width: 56px; height: 56px; border-radius: 18px;
     background: var(--primary-container); color: var(--on-primary-container); font-size: 32px;
@@ -151,30 +164,27 @@
 <div class="phone screen" id="scr-home">
   <div class="statusbar"><span>9:41</span><span class="icons">▂▄▆ 📶 🔋</span></div>
   <div class="toolbar"><span class="title">自律助手</span><span class="gear">⚙️</span></div>
-  <div class="content">
+  <div class="content" style="display:flex;flex-direction:column;align-items:center">
 
-    <div class="card">
-      <div class="label">本次解锁使用</div>
-      <div style="margin-top:2px"><span style="font-size:32px;font-weight:700;color:var(--primary)">45</span><span style="font-size:16px;color:var(--text2)">分钟</span></div>
-      <div class="progress"><i style="width:75%"></i></div>
-      <div class="hint">距提醒还差 15分钟</div>
+    <div class="dial">
+      <div class="ring"><div class="hole"></div></div>
+      <div class="dial-ticks"><span class="t12"></span><span class="t3"></span><span class="t6"></span><span class="t9"></span></div>
+      <div class="dial-center">
+        <div class="dial-task">背英语单词</div>
+        <div class="dial-time">09:57</div>
+        <div class="dial-hint">点击暂停</div>
+      </div>
     </div>
 
-    <div class="card">
-      <div class="label">下一步要做</div>
-      <div style="font-size:24px;font-weight:700;color:var(--text);margin-top:6px">背英语单词</div>
-      <div class="hint" style="margin-top:6px">预计 30 分钟 · 还有 2 个待办未完成</div>
-      <button class="btn btn-primary btn-block" style="height:52px;font-size:18px;margin-top:20px">开始专注</button>
-    </div>
+    <div class="banner" style="margin-top:24px;width:100%"><span>需要使用情况访问权限</span><button class="btn btn-text">去授权</button></div>
 
-    <div style="text-align:center;color:var(--text2);font-size:13px;margin-top:24px">今日已完成 1 · 待办 2</div>
+    <div style="margin-top:20px;color:var(--text2);font-size:13px">今日已完成 1 · 待办 2</div>
   </div>
-    <div style="position:absolute;bottom:24px;left:0;right:0;display:flex;justify-content:center;gap:16px">
+  <div style="position:absolute;bottom:24px;left:0;right:0;display:flex;justify-content:center;gap:16px">
     <div class="fab" style="position:static">+</div>
     <div class="fab" style="position:static">☰</div>
   </div>
 </div>
-
 <!-- ============ 设置 ============ -->
 <div class="phone screen" id="scr-settings" style="display:none">
   <div class="statusbar"><span>9:41</span><span class="icons">▂▄▆ 📶 🔋</span></div>
@@ -244,21 +254,19 @@
       <span class="op">编辑</span><span class="op del">删除</span>
     </div>
   </div>
-  <div class="fab">+</div>
 </div>
 
 <!-- ============ 添加任务 ============ -->
 <div class="phone screen" id="scr-edit" style="display:none">
   <div class="statusbar"><span>9:41</span><span class="icons">▂▄▆ 📶 🔋</span></div>
-  <div class="toolbar"><span class="back">←</span><span class="title">添加任务</span></div>
+  <div class="toolbar"><span class="back">←</span><span class="title">添加任务</span><span class="gear">☰</span></div>
   <div class="content">
     <div class="outline"><span class="olabel">任务名称</span><div class="ovalue">背英语单词</div></div>
     <div class="outline mt12"><span class="olabel">预计时长（分钟）</span><div class="ovalue">30</div></div>
     <div class="outline mt12"><span class="olabel">优先级（越小越优先）</span><div class="ovalue">1</div></div>
   </div>
-  <div class="row" style="padding: 8px 16px 16px; flex: none;">
-    <button class="btn btn-text grow">取消</button>
-    <button class="btn btn-primary grow" style="margin-left:12px">保存</button>
+  <div style="padding: 8px 16px 16px; flex: none;">
+    <button class="btn btn-primary btn-block">保存</button>
   </div>
 </div>
 
