@@ -75,20 +75,8 @@ jobs:
       - name: Set up Gradle (含构建缓存)
         uses: gradle/actions/setup-gradle@v3
 
-      - name: Build debug APK (log to annotations)
-        continue-on-error: true
-        run: |
-          ./gradlew assembleDebug --stacktrace > /tmp/build.log 2>&1 || true
-          # 把错误行注入 Annotations（可在运行页直接读取）
-          grep -nE "e: |error:|What went wrong|Caused by|FAILURE|Execution failed|Could not|Unresolved" /tmp/build.log | tail -n 30 | while IFS= read -r line; do
-            esc=$(printf '%s' "$line" | sed 's/%/%25/g; s/\r//g; s/:/%3A/g')
-            echo "::error::$esc"
-          done
-          tail -n 12 /tmp/build.log | while IFS= read -r line; do
-            esc=$(printf '%s' "$line" | sed 's/%/%25/g; s/\r//g; s/:/%3A/g')
-            echo "::warning::$esc"
-          done
-          [ -f app/build/outputs/apk/debug/app-debug.apk ] || exit 1
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --stacktrace
 
       - name: Upload APK (Actions 产物)
         if: success()

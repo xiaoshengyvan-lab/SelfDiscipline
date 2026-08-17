@@ -161,7 +161,10 @@ class SettingsActivity : AppCompatActivity() {
             binding.layoutSuperIsland.visibility = View.VISIBLE
             binding.btnSuperIsland.setOnClickListener {
                 try {
-                    startActivity(Intent(Settings.ACTION_NOTIFICATION_SETTINGS))
+                    startActivity(
+                        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                            .putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+                    )
                 } catch (e: Exception) {
                     startActivity(Intent(Settings.ACTION_SETTINGS))
                 }
